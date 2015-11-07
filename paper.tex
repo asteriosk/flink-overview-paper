@@ -6,8 +6,41 @@
 
 \usepackage{deauthor,times,graphicx}
 
+% JobGraph and Execution figs
+\usepackage{tikz}
+\usetikzlibrary{arrows,automata,calc,positioning,shapes.geometric}
+
 % trademark symbol
 \usepackage{textcomp}
+
+% code listings
+\usepackage{listings}
+
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+
+% there is no built in support or Scala yet, good enough
+\lstset{frame=tb,
+  language=Java,
+  aboveskip=3mm,
+  belowskip=3mm,
+  showstringspaces=false,
+  columns=flexible,
+  basicstyle={\scriptsize\ttfamily},
+  numbers=none,
+  numberstyle=\tiny\color{black},
+  keywordstyle=\color{blue},
+  commentstyle=\color{dkgreen},
+  stringstyle=\color{mauve},
+  breaklines=true,
+  breakatwhitespace=true,
+  tabsize=4,
+  %for scala
+  emph={%  
+    object, def, val, zip%
+    },emphstyle={\color{blue}}%
+}%
 
 \begin{document}
 
@@ -40,11 +73,13 @@ This paper is organized as follows: Section X presents a novel paradigm for dist
 
 In this section we lay out the architecture of Flink as a software stack, and as a distributed system. While Flink's stack of APIs continues to grow, we can distinguish four main layers: deployment, core, APIs, and libraries.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Stack figure comes here
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{figure}[h!]
+	\centering  	
+  	\includegraphics[width=.45\textwidth]{figs/flink_stack.png}
+	\caption{The Flink software stack.}
+	\label{fig:FlinkStack}
+\end{figure}
 
-% This is the sutext of the figure
 \textbf{Flink's Runtime and APIS.} The core of Flink is the distributed dataflow engine, which executes dataflow programs called Job Graphs. A Job Graph is a DAG of operators and connections between operators. There are two ``core'' APIs in Flink: the DataSet API for processing finite data sets (often referred to as ``batch processing''), and the DataStream API for processing potentially unbounded data streams (often referred to as ``stream processing''). Flink's core runtime engine can be seen as a streaming dataflow engine, and both the DataSet and DataStream APIs create programs (Job Graphs) accepted by this engine. On top of the core APIs, Flink bundles ``domain-specific'' libraries and APIs that generate DataSet and DataStream API programs. Currently these are the following: i) Gelly, an API and library for processing graphs, ii) FlinkML, an API and library for composing Machine Learning pipelines and iii) Table, an API similar in spirit to Microsoft's LINQ.
 
 A Flink cluster comprises of three types of processes: the client, the JobManager, and the TaskManager. The client takes the program code (written in a mixture of Flink's APIs), transforms it to a Job Graph, and submits it to the JobManager. The compilation process involves a type extraction and checking phase that generates serializers and comparators for all used types. DataSet programs, also go through a cost-based query optimization phase, similar to the physical optimizations performed by relational query optimizers (more details in Section X).
@@ -54,17 +89,106 @@ The JobManager is Flink's master node. It coordinates all message-passing during
 
 \section{Execution model}
 
-\textbf{The Job Graph.} Flink's execution model is based on the Job Graph, a directed acyclic graph (DAG) that consists of nodes and edges. There are two classes of nodes: (stateful) operators, and (logical) intermediate results (IRs). For example, the graph below consists of five operators ($o_1$-$o_5$), and three intermediate results ($ir_1$-$ir_3$). Operators abstract computation (e.g., transformations, joins, etc), state (e.g., a persistent counter), as well as data sources (e.g. reading data from a file system, a socket, a message queue, etc.), and data sinks. Operators produce intermediate results, as well as updates to state. An intermediate result is a logical handle (pointer) to the data that is produced by one operator. An intermediate result can be consumed by one or more operators. Intermediate results are logical in the sense that the data they point to may or may not be materialized on disk.
+\textbf{The Job Graph.} Flink's execution model is based on the Job Graph, a directed acyclic graph (DAG) that consists of nodes and edges. There are two classes of nodes: (stateful) operators, and (logical) intermediate results (IRs). For example, the graph below consists of five operators ($op_1$-$op_5$), and three intermediate results ($ir_1$-$ir_3$). Operators abstract computation (e.g., transformations, joins, etc), state (e.g., a persistent counter), as well as data sources (e.g. reading data from a file system, a socket, a message queue, etc.), and data sinks. Operators produce intermediate results, as well as updates to state. An intermediate result is a logical handle (pointer) to the data that is produced by one operator. An intermediate result can be consumed by one or more operators. Intermediate results are logical in the sense that the data they point to may or may not be materialized on disk.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% JobGraph figure comes here
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}
+[shorten >=1pt,node distance=1.75cm,>=stealth',initial text=, font=\tiny]
+\tikzstyle{op}=[circle, draw=blue!50,very thick,fill=blue!20]
+\tikzstyle{ir}=[cylinder, cylinder uses custom fill, cylinder body fill=orange!50, cylinder end fill=orange!50, shape border rotate=90, aspect=0.35, draw, minimum size=1cm, text width=0.5cm, align=center]
 
-\textbf{Parallelized Job Graphs.} When the JobGraph is scheduled in a cluster for execution, it is parallelized to form an ExecutionGraph. An ExecutionGraph consists of tasks (parallel instances of operators), and intermediate result partitions (IRPs), that represent logical partitions of intermediate results corresponding to different partitioning keys. The above JobGraph, if it is partitioned using a parallelism of two, it results to the execution graph below. Assume that $o_1$ and $o_2$ are data sources, $o_2$ is a map operator, $o_4$ is a join operator that needs both inputs partitioned by the same key, and $o_5$ is a filter. Assume also that the join is executed as a repartitioned join, i.e., both inputs are partitioned and shuffled over the cluster of 2 nodes (alternatives would be to broadcast one input or leverage a pre-existing partitioning if present). The resulting ExecutionGraph is the following:
+\node[op] (op_1) {$op_1$};
+\node[ir] (ir_1) [right of = op_1] {$ir_1$};
+\node[op] (op_2) [right of = ir_1] {$op_2$};
+\node[ir] (ir_2) [right of = op_2] {$ir_2$};
+\node[op] (op_3) [below of = op_2] {$op_3$};
+\node[ir] (ir_3) [right of = op_3] {$ir_3$};
+\node[op] (op_4) [right of = ir_2] {$op_4$};
+\node[op] (op_5) [right of = ir_3] {$op_5$};
+			
+\path[->] 	
+			(op_1) 	edge node [above] {} (ir_1)
+			(ir_1) 	edge node [above] {} (op_2)
+			(op_2) 	edge node [above] {} (ir_2)
+			(ir_2) 	edge node [above] {} (op_4)
+			(op_3) 	edge node [above] {} (ir_3)
+			(ir_3) 	edge node [above] {} (op_4)
+			(ir_3) 	edge node [above] {} (op_5)
+			;
+\end{tikzpicture}
+\label{fig:JobGraph}
+\caption{The JobGraph is the logical view of a Flink job.}
+\end{figure}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% ExecutionGraph figure comes here
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\textbf{Parallelized Job Graphs.} When the JobGraph is scheduled in a cluster for execution, it is parallelized to form an ExecutionGraph. An ExecutionGraph consists of tasks (parallel instances of operators), and intermediate result partitions (IRPs), that represent logical partitions of intermediate results corresponding to different partitioning keys. The JobGraph in fig. \ref{fig:JobGraph}, if it is partitioned using a parallelism of two, it results to the ExecutionGraph shown in fig. \ref{fig:ExecutionGraph}. Assume that $op_1$ and $op_2$ are data sources, $op_2$ is a map operator, $op_4$ is a join operator that needs both inputs partitioned by the same key, and $op_5$ is a filter. Assume also that the join is executed as a repartitioned join, i.e., both inputs are partitioned and shuffled over the cluster of 2 nodes (alternatives would be to broadcast one input or leverage a pre-existing partitioning if present). The resulting ExecutionGraph is the following:
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}
+[shorten >=1pt,node distance=1.6cm,>=stealth',initial text=, font=\tiny]
+\tikzstyle{every state}=[circle, fill,draw=none,white,text=black]
+\tikzstyle{op}=[circle, draw=blue!50,very thick,fill=blue!20]
+\tikzstyle{ir}=[cylinder, cylinder uses custom fill, cylinder body fill=orange!50, cylinder end fill=orange!50, shape border rotate=90, aspect=0.2, draw, minimum size=0.8cm, text width=0.8cm, align=center]
+
+\node[op] (op_11) {$op_{11}$};
+\node[ir] (isp_111) [right of = op_11] {$isp_{111}$};
+\node[op] (op_21) [right of = isp_111] {$op_{21}$};
+\node[state] (ir_21) [right of = op_21] {};
+\node[ir] (isp_212) [below of = ir_21, node distance = 0.35cm] {$isp_{212}$};
+\node[ir] (isp_211) [above of = ir_21, node distance = 0.35cm] {$isp_{211}$};
+\node[op] (op_31) [below of = op_21] {$op_{31}$};
+\node[state] (ir_31) [right of = op_31] {};
+\node[ir] (isp_312) [below of = ir_31, node distance = 0.35cm] {$isp_{312}$};
+\node[ir] (isp_311) [above of = ir_31, node distance = 0.35cm] {$isp_{311}$};
+\node[op] (op_41) [right of = ir_21, node distance = 2.25cm] {$op_{41}$};
+\node[op] (op_51) [right of = ir_31, node distance = 2.25cm] {$op_{51}$};
+
+\node[op] (op_22) [below of = op_31] {$op_{22}$};
+\node[ir] (isp_121) [left of = op_22] {$isp_{121}$};
+\node[op] (op_12) [left of = isp_121] {$op_{12}$};
+\node[state] (ir_22) [right of = op_22] {};
+\node[ir] (isp_222) [below of = ir_22, node distance = 0.35cm] {$isp_{222}$};
+\node[ir] (isp_221) [above of = ir_22, node distance = 0.35cm] {$isp_{221}$};
+\node[op] (op_32) [below of = op_22] {$op_{32}$};
+\node[state] (ir_32) [right of = op_32] {};
+\node[ir] (isp_322) [below of = ir_32, node distance = 0.35cm] {$isp_{322}$};
+\node[ir] (isp_321) [above of = ir_32, node distance = 0.35cm] {$isp_{321}$};
+\node[op] (op_42) [right of = ir_22, node distance = 2.25cm] {$op_{42}$};
+\node[op] (op_52) [right of = ir_32, node distance = 2.25cm] {$op_{52}$};
+
+			
+\path[->] 	
+			(op_11) 	edge node [above] {} (isp_111)
+			(isp_111) 	edge node [above] {} (op_21)
+			(op_21) 	edge node [above] {} (isp_211)
+			(op_21) 	edge node [above] {} (isp_212)
+			(isp_211) 	edge node [above] {} (op_41)
+			(isp_212) 	edge [bend left = 12.5] node [above] {} (op_42)
+			(op_31) 	edge node [above] {} (isp_311)
+			(op_31) 	edge node [above] {} (isp_312)
+			(isp_311) 	edge node [above] {} (op_41)			
+			(isp_311) 	edge node [above] {} (op_51)
+			(isp_312) 	edge node [above] {} (op_51)
+			(isp_312) 	edge [bend left = 7.5] node [above] {} (op_42)
+			
+			(op_12) 	edge node [above] {} (isp_121)
+			(isp_121) 	edge node [above] {} (op_22)
+			(op_22) 	edge node [above] {} (isp_221)
+			(op_22) 	edge node [above] {} (isp_222)
+			(isp_221) 	edge [bend right = 7.5] node [above] {} (op_41)			
+			(isp_222) 	edge node [above] {} (op_42)
+			(op_32) 	edge node [above] {} (isp_321)
+			(op_32) 	edge node [above] {} (isp_322)
+			(isp_321) 	edge node [above] {} (op_52)
+			(isp_321) 	edge [bend right = 12.5] node [above] {} (op_41)
+			(isp_322) 	edge node [above] {} (op_52)
+			(isp_322) 	edge [bend right = 7.5] node [above] {} (op_42)
+			;
+\end{tikzpicture}
+\label{fig:ExecutionGraph}
+\caption{The ExecutionGraph is the physical view of a Flink job.}
+\end{figure}
 
 \textbf{Data Transfer.} The unit of data transfer in the Flink runtime is a buffer. Buffers contain one or more records, and a record can span multiple buffers. Buffers are requested and relinquished from local buffer pools, shared among operators that live in the same task manager. An IRP is simply a collection of buffers. Work in Flink progresses (i.e., records flow through the pipeline) as long as there are buffers available, essentially implementing distributed blocking queues (the logical streams) with bounded capacity (the amount of memory available to the buffer pools, which can be configured by the user). This mechanism, in addition to implementing record network transfers doubles down as a natural way to backpressure the flow in the case of slow operators (including external systems that consume data). 
 
@@ -93,9 +217,7 @@ Flink's DataStream API implements a full stream analytics framework on top of Fl
 % Give an example here instead of simplicity
 The API is designed with simplicity in mind, while at the same time providing powerful tools to deal with time and uncertainty. Here is, for example, a word count program on a simple  time-based window:
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% WindowWC snippet comes here
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\lstinputlisting[label=list:WindowWordCount,caption=WindowWordCount Scala implementation,language=Java]{src/wwc.scala}
 
 Flink distinguishes between two notions of time: 
 \begin{description}
@@ -108,23 +230,13 @@ In distributed systems, there is an arbitrary lag between event-time and process
 Flink programs that are based on processing time, rely on the machine clocks, and hence a less reliable notion of time, but exhibit the best latency. Programs that are based on event time provide the most reliable semantics, but may exhibit latency due to event time-processing time lag. Flink includes a third notion of time as a special case of event time called ingestion time, which is the time that events enter the system. This provides  a lower latency than event-time semantics, and avoids the arbitrary processing time semantics.
 
 \textbf{Streaming Windows.} A window defines a logical group of records that are processed together. Flink's windowing system largely follows the Dataflow model [Dataflow] proposed by Google. A window definition consists of three building blocks: a window assigner, optionally a trigger, and optionally an evictor. 
-The assigner predefines the logical groups to which each record belongs, e.g. count-based or time-based periodic windows. The trigger defines when the window operation is performed on each group. The evictor defines which records to keep in each group. The following example defines windows that operate in event time of 6 secondst hat slide every 2 seconds (Assigner). The window results are computed once the watermark passes the end of the window (Trigger).
+The assigner predefines the logical groups to which each record belongs, e.g. count-based or time-based periodic windows. The trigger defines when the window operation is performed on each group. The evictor defines which records to keep in each group. The following example defines windows that operate in event time of 6 secondst hat slide every 2 seconds (Assigner). The window results are computed once the watermark passes the end of the window (Trigger). Flink also offer shart hands for commonly used functionalities.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Trigger snippet comes here
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
-
-A short hand notation for the example above is:
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Shorthand snippet comes here
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+\lstinputlisting[label=list:GenWindow,caption=Window API functionalities,language=Java]{src/genwin.scala}
 
 A global window creates a single logical group. The following example defines a global window (assigner) that invokes the operation on every 1000 events (trigger) while keeping the last 100 elements (evictor). 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Global window snippet comes here
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+\lstinputlisting[label=list:GlobalWindow,caption=Global Window usage,language=Java]{src/glowin.scala}
 
 Note that streams are already partitioned on a key before windowing, so the above is a local operator that does not require coordination between machines. This mechanism can be used to implement a wide variety of windowing functionality [Dataflow], and Flink comes bundled with syntactic sugar for the most common window definitions (e.g., time- and count-based windows). 
 
