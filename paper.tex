@@ -1,14 +1,19 @@
 \documentclass{sig-alternate}
 
+% A hack to make deauthor not complain which redefines
+% the titlepage command
+\newcommand{\titlepage}{}
+
 \usepackage{deauthor,times,graphicx}
 
-
+% trademark symbol
+\usepackage{textcomp}
 
 \begin{document}
 
 
 
-\title{Apache Flink: Stream and Batch Processing at Scale}
+\title{Apache Flink\texttrademark : Streaming dataflows as a basis for universal data analytics}
 \author{Authors}
 
 \maketitle
@@ -17,174 +22,145 @@
 Abstract TBD.
 \end{abstract}
 
-Apache Flink™ : Streaming dataflows as a basis for universal data analytics
 
-Abstract
+\section{Introduction}
 
-Motivation
-Organizations rely more and more on the value of their data, which is directly correlated with the freshness of the data. Additionally, as the data infrastructure becomes more and more complex, development time increasingly goes into plumbing and integrating systems together rather than focusing on the business problem. These trends, together with the ever-growing need for lower latency (“real-time”), and scale create a pressing need for more real-time, asynchronous, push-based data infrastructure. This kind of infrastructure “turns the database around”, by allowing isolated applications to interact with their local datasets, rather than imposing the need to coordinate on a global data store. In conjunction with the growing trends of cloud-based data processing, containerization, Internet of Things, and microservices creates a new reality for the data infrastructure. Popularized by internet companies such as LinkedIn, this trend is quickly sweeping through the enterprise.
+Organizations rely more and more on the value of their data, which is directly correlated with its freshness. In addition, as the data infrastructure becomes more and more complex, development time is focused on integrating different systems together, rather than focusing on business logic. The ever-growing need for lower latency analytics and scale, creates a pressing need for more real-time, asynchronous, data processing infrastructure.
 
-Collectively referred to as streaming, this new kind of infrastructure is based around the following notions. Data items (records) represent real-world events (e.g., a tap on a smartphone, a sensor reading, or a database transaction). An event stream is a time-ordered series of records together with the timestamp that they “happened”, measured, e.g., by the smartphone itself. An event stream can be thought of as a log, in which new events can only be added at the tail, and events can only be consumed from the head. To process historical data, the log needs to be replayed from a past logical time. Applications can consume event streams and create and maintain their own views. Contrast this paradigm with the traditional database-middleware paradigm. With streaming there is no global consistent view of the world that applications need to interact with. Rather, the history of the world is the ground truth, and isolated applications maintain their own views, often referred to as state. 
+Various real-time analytics and CEP tools are currently in use by the industry, including TIBCO, IBM Infosphere Streams, Microsoft Streaminsight, Streambase, etc. These systems implement and extend the results of research which has been done in the database community in the last 15 years, with projects such as Aurora, Telegraph, STREAMS, etc. However, the era of Web-scale computing, spawned the development of internal ``roll-your-own'', solutions based on systems like Apache Storm, Samza, Kafka, Spark, etc. These systems provide very low level APIs and enforce only custom, application-specific solutions to be built on top.  Moreover, in the lack of better solutions, the industry is using traditional batch processing platforms to serve streaming use cases. This has led to approaches such a ``micro-batching'' [], where a batch processor is used to simulate continuous processing, and the ``lambda architecture'', where a stream processor is aided by a batch processor to compensate for lack of performance and consistency guarantees.
 
-Of course, none of this is really new. A large part of the enterprise infrastructure has always been based on continuously flowing event streams, typically served by tools such as enterprise message buses (e.g., TIBCO), CEP (Complex Event Processing) systems (e.g., IBM Infosphere Streams, Microsoft Streaminsight, Streambase), or roll-your-own internal systems. CEP systems in particular are based on years of research in the database community with projects such as Aurora, Telegraph, STREAMS, [[Microsoft project]], etc. While these systems had always served a niche market well, they never achieved widespread adoption in the industry for a variety of reasons, including limited scalability, cost, and lack of integration with other parts of the data infrastructure. Another reason for the limited adoption is, of course, timing. The “Big Data” movement has created an explosion of data, most of which is of a continuous, unbounded nature.
+We believe that there is still a need for a real-time analytics platform, that is not covered by the existing solutions described above. Our observation is that modern enterprises need a platform that integrates well in the Hadoop-related Big Data processing zoo, supports user-defined computations, while being able to perform efficient, scalable and consistent data analysis, on top of both streaming/unbounded and stored/batch data.
 
-Another way that industry is tackling this problem is by using a traditional batch processing paradigm to serve streaming use cases. This has led to approaches such as “micro-batching” [], where a batch processor is used to simulate continuous processing, and the “lambda architecture”, where a stream processor is aided by a batch processor to compensate for lack of performance and consistency guarantees.
+Apache Flink is a platform that was designed to deliver on these requirements. It is an open source project licensed by the Apache Software Foundation (ASF), with its community counting more than 120 developers, and growing fast []. Flink originates from the database research community, in particular the Stratosphere research project [], and incorporates several novel research contributions, some of which have been published in research venues in the past, and some of which have only been published in the form of blog posts or wiki pages. In this article, we attempt a short description of the architecture of the system, highlighting its novel aspects.
 
-To summarize, there is a pressing need for streaming infrastructure that scales in order to tackle both integration and latency. The historical lack of good implementations of such systems has led to one-off solutions, or bolt-on solutions with questionable performance. What modern enterprises need is a streaming platform that is (1) consistent, (2) general, (3) efficient, and (4) scalable. 
+This paper is organized as follows: Section X presents a novel paradigm for distributed dataflows based on the notions of operators and logical intermediate results. Section Z presents a novel mechanism to provide fault tolerance while keeping the latency low and the throughput high. Section Y presents methods to overcome limitations of the JVM by careful engineering, and how to while extend cost-based optimization to user-defined functions [socc10, vldb12] and efficiently embed iterations within a DAG-based dataflow system [vldb12]. 
 
-Apache Flink is a platform that delivers on these requirements. Flink is an open source project licensed by the Apache Software Foundation (ASF), a non-profit organization that houses open source projects and their communities. The Flink community is counting more than 120 developers, and growing fast []. Historically, Flink stems from the database research community, and in particular the Stratosphere research project []. Flink entered the ASF in April 2014 as an “incubating” project, and “graduated” as a “top-level” project in December 2014. 
 
-Flink incorporates several novel research contributions, some of which have been published in the past, and some of which have only been published in the form of blog posts or wiki pages. In this article, we attempt a complete description of all novel aspects of the system, including:
-A novel paradigm for distributed dataflows based on the notions of operators and logical intermediate results.
-A novel mechanism to provide fault tolerance in a distributed data streaming system while keeping the latency low and the throughput high.
-How to overcome limitations of the JVM by careful engineering
-Efficiently embedding iterations within a DAG-based dataflow system [vldb12]
-Extending cost-based optimization to user-defined functions [socc10, vldb12]
-The value of this paper lies mostly into positioning all these within a common architecture and few conceptual building blocks. We believe that Flink is the artifact of “Big Data systems done right”, clearly superseding most other proposed architectures in the space in all fronts (including batch, stream, iterative processing).
-System architecture
-We begin by laying out the architecture of Flink (i) as a software stack, and (ii) as a distributed system.
+\section{System architecture}
 
-While Flink’s stack of APIs continues to grow, we can distinguish four main layers: deployment, core, APIs, and libraries.
+In this section we lay out the architecture of Flink as a software stack, and as a distributed system. While Flink's stack of APIs continues to grow, we can distinguish four main layers: deployment, core, APIs, and libraries.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Stack figure comes here
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+% This is the sutext of the figure
+\textbf{Flink's Runtime and APIS.} The core of Flink is the distributed dataflow engine, which executes dataflow programs called Job Graphs. A Job Graph is a DAG of operators and connections between operators. There are two ``core'' APIs in Flink: the DataSet API for processing finite data sets (often referred to as ``batch processing''), and the DataStream API for processing potentially unbounded data streams (often referred to as ``stream processing''). Flink's core runtime engine can be seen as a streaming dataflow engine, and both the DataSet and DataStream APIs create programs (Job Graphs) accepted by this engine. On top of the core APIs, Flink bundles ``domain-specific'' libraries and APIs that generate DataSet and DataStream API programs. Currently these are the following: i) Gelly, an API and library for processing graphs, ii) FlinkML, an API and library for composing Machine Learning pipelines and iii) Table, an API similar in spirit to Microsoft's LINQ.
 
-The core of Flink is the distributed dataflow engine, which executes dataflow programs called JobGraphs. A JobGraph is a DAG of operators and connections between operators, but it is oblivious to the semantics of these operators: for example, the engine does not distinguish between a join or a coGroup, and it similarly does not distinguish between a map or a stream window operator; semantics are left to the upper layers, which embed the specific operator logic withing the boxes provided by the runtime engine.
+A Flink cluster comprises of three types of processes: the client, the JobManager, and the TaskManager. The client takes the program code (written in a mixture of Flink's APIs), transforms it to a Job Graph, and submits it to the JobManager. The compilation process involves a type extraction and checking phase that generates serializers and comparators for all used types. DataSet programs, also go through a cost-based query optimization phase, similar to the physical optimizations performed by relational query optimizers (more details in Section X).
 
-There are two “core” APIs in Flink: the DataSet API for processing finite data sets (often referred to as “batch processing”), and the DataStream API for processing potentially unbounded data sets (often referred to as “stream processing”). We note that the the terms “batch” and “stream processing” here only cause confusion, as the carry the assumption that the underlying engine uses a particular style of physical data processing [Dataflow, Streaming 101]. In Flink, the core runtime engine can be thought of as a streaming dataflow engine, and both APIs create programs (JobGraphs) accepted by this engine. The reason for the existence of the two APIs is largely historical. The DataSet API pre-existed to the DataStream API. In theory, one can treat finite data sets as a special case of unbounded data streams, and embed all functionality of the DataSet API within the DataStream API. 
-On top of the core APIs, Flink bundles “domain-specific” libraries and APIs, currently:
-Gelly, an API and library for processing graphs
-FlinkML, an API and library for composing Machine Learning pipelines
-Table, an API similar in spirit to Microsoft’s LINQ
-All these APIs generate DataSet and DataStream API programs. In addition, Flink includes several compatibility packages, currently a Hadoop MapReduce and an Apache Storm compatibility package. Finally, third-party tools can also generate Flink programs. These are not shipped with the Flink codebase, but are part of other software projects. A non-exhaustive list of these are Cascading [], Google Cloud Dataflow [], Apache SAMOA [], Apache Mahout [], and Apache Zeppelin [].
+The JobManager is Flink's master node. It coordinates all message-passing during job execution by sending heartbeats to the TaskManagers, receiving statistics, controls the tasks' lifecycle,  coordinates the fault tolerance machanisms. The actual data processing takes place in the TaskManagers, or worker processes that they execute several tasks in multiple threads, and maintain data structures shared by all tasks (e.g., buffer pools) executed by a TM. TMs communicate directly with each other using a multiplexed TCP connection per TM pair. 
 
-A Flink cluster involves three main types of processes: the client, the JobManager, and the TaskManager. When Flink is running in a YARN cluster, the JobManager and TaskManager processes are embedded within YARN containers. A typical cluster consists of one client (typically living in the machine that submits the program), one or more JobManagers (one leader and one or more replicas for high availability), and several TaskManagers, typically one per cluster node. 
 
-[[Explain program compilation in detail, what JobManager does and main JM data structures, what TaskManagers do, and main TaM data structures, how messages are shipped, how data is transferred, and how heartbeats and high availability work]].
-The core: continuous dataflows 
+\section{Execution model}
 
-Programmers interact with Flink using a combination of its APIs (currently DataSet, DataStream, Table, Graph, and Machine Learning). Every Flink program goes through a compilation phase (a combination of type inference, query optimization, and code generation, all described in the subsequent sections), and creates a dataflow graph (called JobGraph in Flink parlance) that serves as a unifying representation of all Flink programs.
+\textbf{The Job Graph.} Flink's execution model is based on the Job Graph, a directed acyclic graph (DAG) that consists of nodes and edges. There are two classes of nodes: (stateful) operators, and (logical) intermediate results (IRs). For example, the graph below consists of five operators ($o_1$-$o_5$), and three intermediate results ($ir_1$-$ir_3$). Operators abstract computation (e.g., transformations, joins, etc), state (e.g., a persistent counter), as well as data sources (e.g. reading data from a file system, a socket, a message queue, etc.), and data sinks. Operators produce intermediate results, as well as updates to state. An intermediate result is a logical handle (pointer) to the data that is produced by one operator. An intermediate result can be consumed by one or more operators. Intermediate results are logical in the sense that the data they point to may or may not be materialized on disk.
 
-A JobGraph is a directed acyclic graph (DAG) that consists of nodes and edges. There are two classes of nodes: (stateful) operators, and (logical) intermediate results (IRs). For example, the following graph consists of five operators (o1-o5), and three intermediate results (ir1-ir3). Operators abstract computation (e.g., transformations, joins, etc), state (e.g., a persistent counter), as well as data sources (e.g., reading data from a file system, a socket, a message queue, etc), and data sinks. Operators produce intermediate results, as well as updates to state (which can be managed externally). An intermediate result is a logical handle (pointer) to the data that is produced by one operator. An intermediate result can be consumed by one or more operators. Intermediate results are logical in the sense that the data they point to may or may not be materialized on disk.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% JobGraph figure comes here
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+\textbf{Parallelized Job Graphs.} When the JobGraph is scheduled in a cluster for execution, it is parallelized to form an ExecutionGraph. An ExecutionGraph consists of tasks (parallel instances of operators), and intermediate result partitions (IRPs), that represent logical partitions of intermediate results corresponding to different partitioning keys. The above JobGraph, if it is partitioned using a parallelism of two, it results to the execution graph below. Assume that $o_1$ and $o_2$ are data sources, $o_2$ is a map operator, $o_4$ is a join operator that needs both inputs partitioned by the same key, and $o_5$ is a filter. Assume also that the join is executed as a repartitioned join, i.e., both inputs are partitioned and shuffled over the cluster of 2 nodes (alternatives would be to broadcast one input or leverage a pre-existing partitioning if present). The resulting ExecutionGraph is the following:
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ExecutionGraph figure comes here
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-When the JobGraph is scheduled in a cluster for execution (Flink can run on standalone and YARN clusters), it is parallelized to form an ExecutionGraph. An ExecutionGraph consists of tasks (parallel instances of operators), and intermediate result partitions (IRPs), that represent logical partitions of intermediate results corresponding to different partitioning keys. Let us take the above JobGraph and partition it using a parallelism of 2. Assume that o1 and o2 are data sources, o2 is a map operator, o4 is a join operator that needs both inputs partitioned by the same key, and o5 is a filter. Assume also that the join is executed as a repartitioned join, i.e., both inputs are partitioned and shuffled over the cluster of 2 nodes (alternatives would be to broadcast one input or leverage a pre-existing partitioning if present). The resulting ExecutionGraph is the following:
+\textbf{Data Transfer.} The unit of data transfer in the Flink runtime is a buffer. Buffers contain one or more records, and a record can span multiple buffers. Buffers are requested and relinquished from local buffer pools, shared among operators that live in the same task manager. An IRP is simply a collection of buffers. Work in Flink progresses (i.e., records flow through the pipeline) as long as there are buffers available, essentially implementing distributed blocking queues (the logical streams) with bounded capacity (the amount of memory available to the buffer pools, which can be configured by the user). This mechanism, in addition to implementing record network transfers doubles down as a natural way to backpressure the flow in the case of slow operators (including external systems that consume data). 
 
+We mentioned that the intermediate results are logical handles to the data, rather than the data itself. Internally, intermediate results are abstract classes with many implementations. These implementations can perform pipelined data exchange, and blocking data exchange.
 
+\textbf{Pipelined Data Exchange.} Pipelining (also called intra-operator parallelism), means that a producing and a consuming operator make progress at the same time, without the consumer waiting for the producer to finish. Pipelining is required in streaming systems, and is also used in batch systems to reduce latency. Flink implements pipelining by implementing intermediate results which activate network transfers between the producer task and consumer task,  as soon as their first buffer is available. Flink allows the configuration of its buffers' size and timeout. A buffer is sent to its consumer task as soon it is filled,  or as soon as a timeout is reached. Hence, by setting the buffer size and/or timeout to lower values, one can reduce latency, while achieving the opposite effect (i.e., high throughput) by using higher values.
 
-The unit of data transfer in the Flink runtime is a buffer. Buffers contain one or more records, and a record can span multiple buffers. The default size of a buffer in Flink is 32 kilobytes. Buffers are requested and relinquished from local buffer pools, shared among operators that live in the same task manager. An IRP is simply a collection of buffers. Work in Flink progresses (i.e., records flow through the pipeline) as long as there are buffers available, essentially implementing distributed blocking queues (the logical streams) with bounded capacity (the amount of memory available to the buffer pools, which can be configured by the user). Flink  This mechanism, in addition to implementing record network transfers doubles down as a natural way to backpressure the flow in the case of slow operators (including external systems that consume data). See [http://data-artisans.com/how-flink-handles-backpressure/] for a detailed presentation. 
+\textbf{Blocking Data Exchange.} Sometimes it is desirable to break a job into stages, scheduling and executing each stage individually (e.g., to enable interactive processing, and better staging of resources in large batch jobs). To do that, the system has to materialize intermediate results (in memory or disk). Flink implements blocking data exchange via an intermediate result that signals its availability only when all the buffers from the producer have been materialized. The cached buffers can double down as a materialized reusable intermediate result. 
 
-We mentioned that the intermediate results are logical handles to the data, rather than the data itself. Internally, and intermediate result is an abstract class that has many implementations. Let us look at two concrete examples: implementing pipelined data exchange, and implementing blocking data exchange.
 
-Pipelined data exchange (also called intra-operator parallelism) means that a producing and a consuming operator make progress at the same time, without the consumer waiting for the producer to finish. Pipelining is present (and required) in streaming systems (such as Flink, Storm, CEP systems, etc), and is also used in MPP databases and DBMSs (Impala, Greenplum), but it is typically not used in batch processors (Spark, MapReduce, Tez). Pipelined data exchange is implemented in Flink by an intermediate result implementation, which activates network transfers as soon as the first buffer is available. In particular, as soon as the producing operator places the first buffer in the cache of the result partition, the IR signals to the JobManager its availability. The JobManager then signals to all consumers of this partition that the the partition is ready (scheduling the operators if they had not been previously scheduled), and initiates the data transfer.
+\section{Fault Tolerance via \\ Asynchronous Snapshots}
 
-Pipelined data exchange is great for lower latency (time to first result) in batch jobs, and is required in streaming jobs. To better allocate resources in very large batch jobs, it is sometimes desirable to break up a job into stages, scheduling and executing each stage individually. To do that, a blocking data exchange that materializes intermediate results in a combination of memory and disk is desirable. Flink implements blocking data exchange via an intermediate result that signals its availability only when all the buffers from the producer have been cached. The cached buffers double down as a materialized reusable intermediate result, similar to Spark’s RDD data structure. Blocking data exchange is used in Flink to break deadlocks, or when specified by the user. All other data processing needs (including batch processing) currently use pipelined data exchange.
+Fault tolerance in Flink is achieved by taking a snapshot of the execution graph at regular intervals. When failure occurs the state of the execution is restored from the latest snapshot. Upon recovery, in order to guarantee exactly-once processing semantics, the records (events) consumed since the latest snapshot are reprocessed in the same order at each respective source. Normally this possible by using persistent message queueing systems, e.g. Kafka.
 
-All available implementations of intermediate results in Flink are shown in the following table:
+Flink's core mechanism for distributed snapshots is called ``Asynchronous Barrier Snapshotting'' (ABS) [arXiv paper]. It creates a global snapshot by collecting the state of each task in the execution graph in an asynchronous manner. It does so by superimposing snapshotting using injected markers, called ``barriers'', in the input data stream. Similar to Chandy-Lamport distributed snapshots [Chandy/Lamport], the barriers in ABS dictate the records that should be fully processed before each respected global snapshot, however, no records in transit are included in a snapshot, keeping the persisted state at a minimum. ABS achieves this by a special ``aligning'' phase which ensures that all records from all upstream tasks preceding broadcasted barriers have been fully consumed before processing the data stream further. Recovery from failure reverts the execution graph to the most recent snapshot and is fully consistent by respecting the causal dependency of records. Furthermore, ABS [arXiv paper] supports snapshotting of cyclic graphs.  The operation of ABS is fully decoupled from the backend used for persisting states, thus, allowing multiple different backend implementations to be integrated. The following figure illustrates the snapshot process.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ABS figure comes here
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-Pipelined
-Materialized
-Ephemeral
+\section{Stream analytics on top of \\ dataflows}
 
+Flink's DataStream API implements a full stream analytics framework on top of Flink's runtime, including the mechanisms to manage time (including out-of-order event processing), defining windows, and maintaining and updating user-defined state. The streaming API is based on the notion of a DataStream, a (possibly unbounded) immutable collection of elements of a given type. Since the Flink runtime already has pipelined data transfers, continuous stateful operators, and a fault tolerance mechanism for consistent state updates, overlaying a stream processor on top of it essentially boils down to implementing a windowing system and a state interface.The programming model of Flink's streaming API,  builds on two basic abstract data types, namely data streams and window streams. Each of the two supports specific operations since they exhibit different properties. For example, windows support transformations that are only possible on bounded collections such as joins, groupings and aggregations. Other transformations, such as (flat)map are  can be applied incrementally on data streams.
 
+% Give an example here instead of simplicity
+The API is designed with simplicity in mind, while at the same time providing powerful tools to deal with time and uncertainty. Here is, for example, a word count program on a simple  time-based window:
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% WindowWC snippet comes here
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-Cached
+Flink distinguishes between two notions of time: 
+\begin{description}
+\item[Event time] is the time that an event actually happened (e.g., the time that a sensor emitted a signal, or the time that a person tapped on their smartphone).
+\item[Processing time] is the wall-clock time of the machine that is processing the data.
+\end{description}
 
+In distributed systems, there is an arbitrary lag between event-time and processing-time [dataflow]. This may mean arbitrary delays for getting an answer based on event-time semantics. To avoid arbitrary delays these systems regularly insert special events called ``low watermarks''  that include a time attribute $t$ indicating that all events lower than $t$ have already entered the system. The watermarks aid the execution engine to process events in the correct event order. 
 
+Flink programs that are based on processing time, rely on the machine clocks, and hence a less reliable notion of time, but exhibit the best latency. Programs that are based on event time provide the most reliable semantics, but may exhibit latency due to event time-processing time lag. Flink includes a third notion of time as a special case of event time called ingestion time, which is the time that events enter the system. This provides  a lower latency than event-time semantics, and avoids the arbitrary processing time semantics.
 
+\textbf{Streaming Windows.} A window defines a logical group of records that are processed together. Flink's windowing system largely follows the Dataflow model [Dataflow] proposed by Google. A window definition consists of three building blocks: a window assigner, optionally a trigger, and optionally an evictor. 
+The assigner predefines the logical groups to which each record belongs, e.g. count-based or time-based periodic windows. The trigger defines when the window operation is performed on each group. The evictor defines which records to keep in each group. The following example defines windows that operate in event time of 6 secondst hat slide every 2 seconds (Assigner). The window results are computed once the watermark passes the end of the window (Trigger).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Trigger snippet comes here
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 
+A short hand notation for the example above is:
 
-See [https://cwiki.apache.org/confluence/display/FLINK/Data+exchange+between+tasks] for a detailed presentation.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Shorthand snippet comes here
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 
-Fault tolerance via asynchronous snapshots
-Backing up and restoring the state of a computation is vital in the presence of software or infrastructure failures. On the event of such a failure, the system has to recover the state of the failed operator, and continue the computation from where it left off. As in transaction execution, different applications require different consistency guarantees. For instance, if no consistency guarantee is required (e.g., a live monitoring dashboard that displays clicks in a website), a system might simply recover the operator state to any previous snapshot and continue ingesting the stream. However, a computation that requires correctness of results (e.g., user interactions with their shopping basket) requires stricter consistency guarantees.
+A global window creates a single logical group. The following example defines a global window (assigner) that invokes the operation on every 1000 events (trigger) while keeping the last 100 elements (evictor). 
 
-Such consistency guarantees include:
-at most once: no consistency guarantees, including possibility for data loss 
-at least once: the fault tolerance mechanism guarantees that an event is going to touch the state of an operator at least once i.e., in case of failure, some events of the stream might touch the state multiple times.
-exactly once: that the operator state will be touched exactly once per event, no matter how many failures may happen.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Global window snippet comes here
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 
-In batch processing, guaranteeing exactly once consistency is simple: the system simply pauses the computation, re-deploys (part of) the dataflow and re-consumes the necessary parts of its input. In the streaming case, however, i) computations are continuous (e.g., months of processing) ii) a data stream does not have, in principle, a beginning or an end, nor can it be stored indefinitely and iii) the computation cannot simply be stopped mid-flight.
-Exactly-Once Fault Tolerance in Flink
-The problem of providing exactly once guarantees boils down to determining what state the streaming computation currently is in (including in-flight records, and operator state), drawing a consistent snapshot of that state, and storing that snapshot in durable storage. If one can do this frequently, recovery from a failure only means i) restoring the latest snapshot from durable storage, and ii) rewinding the stream source to the point when the snapshot was taken and continuing the computation. Flink’s algorithm is described in detail in []; in the sequel, we give a brief summary.
+Note that streams are already partitioned on a key before windowing, so the above is a local operator that does not require coordination between machines. This mechanism can be used to implement a wide variety of windowing functionality [Dataflow], and Flink comes bundled with syntactic sugar for the most common window definitions (e.g., time- and count-based windows). 
 
-Flink’s snapshot mechanism is based on an improvement of a technique introduced in [Chandy/Lamport], to draw consistent snapshots of the current state of a distributed system without missing information and without recording duplicates. In this technique, the snapshots are taken asynchronously: the computation does not need to stop in order to take a snapshot. Flink’s fault tolerance mechanism draws state snapshots of a running stream topology, and stores these snapshots to durable storage (e.g., to HDFS or an in-memory file system). The frequency of these checkpoints can vary according to the failure rates and the cost of taking a snapshot.
+Simple programs in Flink's DataStream API looks like functional, side effect-free programs consisting of transformations on unbounded immutable collections. We incorporate mutable state in the API by providing interfaces to users to register any local variable within a transformation with the system's checkpointed mechanism and freely use this variable in their code. 
 
-The checkpointing mechanism is based on stream barriers (“markers” in []) that flow through the operators. Barriers are first injected at the sources (e.g., if using Apache Kafka as a source, barriers are aligned with offsets), and flow through the DAG as part of the data stream together with the data records (see figure below). A barrier separates records into two groups: those that are part of the current snapshot (a barrier signals the start of a checkpoint), and those that are part of the next snapshot.
 
+\section{Batch analytics on top of \\ dataflows}
 
+A bounded data set is a special case of an unbounded data stream. Thus, a streaming program that inserts all of its input data in a window can form a ``batch`` program and ``batch analytics``, or ``batch processing`` should be fully covered by Flink's features that we presented above. However, i) the syntax, i.e., the API for batch computation can be simplified (not need for window definitions, simpler joins and loops) and ii) we can simplify the fault tolerance mechanisms and iii) we can apply query optimization borrowing ideas from MPP database systems.
 
-Barriers flow downstream and trigger state snapshots when they pass through operators. An operator first aligns its barriers from all incoming streams (if the operator has more than one input), buffering data from the faster ones. When an operator has received a barrier from all incoming streams, it checkpoints its state (if any) to durable storage. Once state checkpointing is done, the operator forwards the barrier downstream. Note that in this mechanism, state checkpointing can be both asynchronous (processing continues while the state is written out to durable storage) and incremental (only deltas are written to durable storage). Once all data sinks have released the barriers, the current checkpoint has finished. Recovery on a failure means simply restoring the latest checkpointed state, and restarting the sources from the last recorded barrier.
+For these reasons, Flink treats specially batch computations, by implementing the above optimizations. For enabling batch computations on top of it's streaming runtime, Flink embeds blocking versions of its operators (sorts, joins, etc) within its runtime. These operators simply block until they have received all of their input. Moreover, Flink currently disables the asynchronous snapshotting mechanism for batch programs, and simply uses backtracking based recovery as first described in Dryad [Dryad].
 
-The aforementioned mechanism guarantees “exactly-once” state updates, meaning that any state that takes part in the snapshotting mechanism will have the same value with or without failures. Flink also includes a mode for at-most-once processing (no snapshotting, no barriers), as well as a mode for at least once processing (operators simply forward the barriers, but sources snapshot their offsets). 
+With these established, we look that the batch-specific optimizations mentioned above: query optimization, and query processing on paged (managed) memory.
 
-A common misinterpretation of the term “exactly-once” is that the output of a streaming job does not have any duplicates. That might still be the case, as data sinks are external systems, which Flink might not have access to. However, by building custom connectors to common systems that participate in Flink’s snapshotting  mechanism, one can ensure end-to-end exactly once guarantees. Flink bundles a number of these connectors. For example, Flink bundles a data sink to any HDFS-compatible file system that creates rolling files from a continuous streaming job. The user can specify when a new file will be created. In Flink data sinks are stateful operators just as any other operator. The state of the HDFS sink is the last offset written in the file. In the case of a failure, restoring the sink to its snapshotted state triggers a file truncation that deletes the data that was written between the last snapshot and the failure. 
+\textbf{Query Optimization.} Flink's optimizer builds on techniques from parallel database systems such as plan equivalences, cost models and interesting properties. However, the arbitrary UDF-heavy DAGs that make up Flink's dataflow programs, do not allow a traditional optimizer to employ database techniques out of the box [black-boxes], since the operators hide their semantics from the optimizer. For the same reason, cardinality and cost estimation methods are equally difficult to employ. Flink's optimizer employs a number of novel methods for overcoming these issues [blackboxes, stratosphere-journal, iterations] for which we provide a short overview below. Flink's runtime supports various execution strategies including repartition/broadcast data transfer, as well as sort-based grouping and sort- and hash-based join implementations. Flink's optimizer enumerates different physical plans based on the concept of interesting properties propagation [scope-optimizer], using a cost-based approach to choose among multiple physical plans. The cost includes network/disk I/O and CPU cost. To overcome the cardinality estimation issues that were mentioned earlier,  Flink's optimizer uses hints that are provided by the programmer.
 
-Thus, Flink can be seen as a way to implement distributed transactions between systems. By creating sources and sinks that take part in the snapshotting, and relaying the data movement to Flink, one can move data consistently with transactional guarantees between systems. For example, the HDFS sink describes above implements “read uncommitted” semantics, as “garbage” data may be written and then deleted. We note that such systems implemented with Flink are CA systems in the CAP theorem characterization. 
-Stream analytics on top of dataflows
-Window implementation
-Batch analytics on top of dataflows
-How to embed blocking operators in dataflow graph
-Why this is not enough
-Blocking data exchange (stages)
-Scheduling (WiP)
-Fault tolerance (WiP)
-Query optimization
-Memory management
+\textbf{Memory Management.} Building on database technology, Flink, instead of storing objects in the JVM's heap, serializes objects into a  memory segments. These memory segments resemble database blocks into which, java objects representing the tuples that go through the runtime are serialized. Operations such as sorting, and joining, operate as much as possible on the binary data, keeping the de/serialization overhead at a minimum and partially spilling data to disk when needed. To handle arbitrary objects, Flink uses type inference, and  custom serialization mechanisms.  By keeping the data processing on binary representation and off-heap, Flink manages to reduce the garbage collection overhead, and implement cache-efficient and robust algorithms that scale gracefully in under memory constraints.
 
-How Flink implements those
-Query optimization
-Motivation?
+\textbf{Native Iterations on top of Dataflows.} The final aspect of Flink on which we focus, is how to implement loops on top of the Flink's dataflow engine. Some approaches execute iterations by submitting new jobs for each iteration or by adding additional nodes to a running DAG [Hadoop iterative works, Spark], hiding from  the engine that it is executing an iterative program. The approach, implemented in Naiad [] adds feedback edges in the dataflow graph, supporting graphs with cycles, that  allow for nested iterations. A third approach was to design specialized engines around iterative processing along (e.g., Giraph, and GraphLab) allowing to reduce the number of computations in each iteration [].
 
-Flink’s optimizer builds on technology from parallel database systems; namely, on the concepts of plan equivalences, cost models and interesting properties. Yet, certain issues which  stem from the UDF-heavy DAGs that represent Flink’s dataflow programs, do not allow Flink’s optimizer to employ those database techniques out of the box [black-boxes]. In the sequel, we summarize these issues and present the solutions that Flink implements.
+Flink follows an approach that maintains the DAG-based runtime, but allows for special ``head'' and ``tail'' tasks to signify the beginning and end of iteration, that exchange data via shared memory. This approach simulates a cyclic dataflow within a DAG engine making Flink i ) competitive with specialized graph engines [], and outperforms the driver-based approach []. Flink supports delta iterations [], which exploit sparse computational dependencies, and are used, as the basis for Gelly, Flink's Graph API. Finally, Flink offers Bulk Synchronous Parallel (BSP) iterations in its DataSet API, and asynchronous iterations in its DataStream API.
 
-The first issue is that queries in most database systems are represented and executed as trees of operators (i.e., each operator has exactly one output). whose semantics are well defined  and known to the optimizer. Based on those semantics, traditional optimizers enumerate alternative logical plans by e.g., employing equivalence rules for operator reordering [volcano, cascades]. In contrast, Flink’s programs do not form trees of known operators but DAGs, which encapsulate UDFs with arbitrary user code. As a result, the operators hide their semantics from the optimizer and traditional techniques for plan enumerator are not directly applicable. Worse, traditional cardinality and cost estimation methods do not apply either, due to the presence of UDFs. Flink’s optimizer employs a number of novel methods for overcoming these issues [blackboxes, stratosphere-journal, iterations] for which we provide an short overview below.
-Plan Enumeration for UDF-heavy DAGs
-Plan enumeration (reordering) in the presence of UDFs. Semantics of operators. etc.
 
-Physical Optimization
-Flink’s runtime supports execution strategies known from parallel databases, such as repartition/broadcast data transfer strategies, as well as sort-based grouping and different join implementations (sort- and hash-based). Flink’s optimizer enumerates different physical plans based on the concept of interesting properties propagation [scope-optimizer]. 
+\section{Related work}
 
-The optimizer uses a cost-based approach to choose among multiple equivalent physical plans, based on network/disk I/O, and CPU cost. For the optimizer to assign costs to plans, it needs to first estimate the size of intermediate results. Estimating the cardinality of UDFs’ outputs is very challenging, even in relational databases [], and physical properties can be destroyed by a UDF (e.g., by modifying the field on which the input of an operator is sorted). To overcome these issues,  Flink’s optimizer relies on hints that are provided by the programmer. Examples of hints can be to state which side of a join is very small (e.g., could lead to the execution of a broadcast join) or that a certain field of a record, entering a UDF, is forwarded intact (i.e., physical properties such as sorting on that field are preserved and can be propagated to further parts of the plan). These hints enrich the internal DAG representation of a Flink program with extra information and allow the optimizer to perform propagation of interesting physical properties in the DAG. 
+There is, by now, a wealth of engines for distributed batch and stream analytical processing. We categorise these systems below. 
 
-Previous work on constructing optimal plans for DAG-structured queries have shown that it is a very challenging problem [neumann-moerkete].  Flink performs the propagation of interesting properties (sorting, partitioning, etc.) from the sources to the sinks and then performs a pass from the sinks to the sources in order to prune the possible plans and choose the optimal one, similarly to [scope-optimizer]. To correctly enumerate DAG-structured plans, Flink first analyses the DAG in order to find the operators that “branch” (i.e., have more than one outputs) and the operators that “join” those branches back together. The subplans rooted on the branching operator are treated like common subexpressions;  The plan candidates for that operator’s inputs must have the same subplan for the common subexpression. Finally, the optimizer adds artificial pipeline breakers to plans with deadlocks. A deadlock can happen when some of the paths between the branching and the joining operator are fully pipelined (i.e., pipelined operators, depend - possibly indirectly -  on each other).
+\textbf{Batch Processing.} Apache Hadoop [] is the most popular open source system for large-scale data analysis that is based on the MapReduce paradigm []. Dryad [], introduced embedded user-defined functions in general DAG-based dataflows and was used by SCOPE [] which added a language and an SQL optimizer on top of it. Apache Tez [] can be seen as an open source implementation of the ideas proposed in Dryad. MPP databases [], and recent open-source implementations [Apache Drill, Impala] restrict their API to SQL variants. Very similar to Flink, Apache Spark [] is a very popular data processing framework that implements a DAG-based processing framework, provides an SQL optimizer, performs driver-based iterations, and treats stream computations as micro-batches. In contrast, Flink is the only system that i) sports an optimizer that can optimize DAG programs beyond SQL queries, ii) is able to perform very efficient iterative processing natively, iii)  includes stream processing as a first-class citizen, enabling more complex use cases than micro-batches.
 
-Iteration-specific optimizations here or in the iterations section?
-Memory Management
-In data analysis frameworks such as Flink, data needs to be stored in memory, for data caching and executing operations such as sorting and joining. A straightforward approach of processing in a JVM, is to store the data as Java objects, and operate on those, leaving the responsibility of garbage collection and spilling to disk to the JVM and the OS respectively. In that case, the overhead of garbage collection in a JVM heap filled with millions of objects, can easily exceed the actual computation time. Moreover, Java objects require a certain space overhead, depending on the JVM implementation and platform. Database operator implementations have been traditionally managing memory and employing smart memory spilling mechanisms [].
+\textbf{Stream Processing.} There is a wealth of work on streaming systems, that includes commercial systems like StreamBase, Microsoft StreamInsight, and IBM InfoSphere Streams. Many of these systems are based on research in the database community in projects such as Telegraph [], Aurora/Borealis [], Stanford STREAMS [], Trill [], and IBM System S []. Most of the above systems are either i) academic prototypes, ii) closed-source commercial products, or iii) do not scale the computation horizontally on clusters of commodity servers. Newer open source streaming systems that scale horizontally, such as Apache Storm and Apache Samza, provide very low level APIs and offer only at-least-once and at-most-once guarantees. MillWheel [], a closed-source system at Google provides exactly-once guarantees with low latency and is used by Google Dataflow [] to implement  out-of-order stream analytics. To the best of our knowledge, Flink is the only open-source project that i) offers high level APIs and processing libraries, ii) provides state management with exactly-once guarantees and iii) achieves high throughput and low latency, serving both batch and true streaming computations equally well.
 
+\section{Conclusion}
 
+In this paper we presented Apache Flink, a platform that implements one universal dataflow engine designed to perform both stream and batch analytics. Flink's dataflow engine treats operator state and logical intermediate results as first class citizens, and is used by the batch and a data stream APIs. The streaming API that is built on top of  Flink's streaming dataflow engine, provides the means to keep recoverable state, and to partition, transform, discretize and aggregate a data stream. While batch computations are, in theory, a special case of a streaming computations, Flink treats them specially, by optimizing their execution with a novel query optimizer, and by implementing blocking operators that gracefully spill to disk in the absence of memory. 
 
-Building on database technology, Flink, instead of storing objects in the heap, serializes objects into a fixed number of pre-allocated memory segments. Figure X, depicts the structure of a memory segment and the internal representation of a tuple of 3 fields: an integer, a double and a nested Pojo (a Person that has an ID and a name).
-
-In Flink, operations such as sorting, and joining operate as much as possible on the binary data, keeping the de/serialization overhead at a minimum. If more data needs to be processed than can be kept in memory, Flink’s operators partially spill data to disk. Flink builds on, and generalizes database technology to handle arbitrary objects using type inference, and  custom serialization and comparison mechanisms. 
-
-By employing such techniques for data processing off-heap and in binary representation, Flink manages to, not only reduce the garbage collection overhead, but also to perform memory-safe execution and implement cache-efficient and robust out-of-core algorithms.
-Iterative analytics on top of dataflows
-Supersteps or asynchronous
-Head and tail
-Delta iterations
-Backup of in-flight records in snapshotting
-
-Related work
-Fault Tolerance in Streaming Systems
-In stream processing, fault tolerance with exactly-once guarantees implemented in many different ways. For instance, Google Dataflow/Millwheel does it by storing, in a transactional store, the in-flight records (the ones that it pushes downstream) together with the current state, while in systems that implement micro-batching (e.g., Spark, Trident), the resulting state at each micro-batch step is checkpointed (as described above for the batch case) and can be easily recovered in case of failures.
-
-
-
-Conclusion
-
-References
-
-
-
-
-\cite{DBLP:conf/hotcloud/ZahariaCFSS10}
-
+\section{References}
 
 \bibliographystyle{abbrv}
 \bibliography{references}
