@@ -2,37 +2,7 @@
 
 \section{Execution model}
 \label{sec:execution}
-\para{The Job Graph.} Flink's execution model is based on the Job Graph, a directed acyclic graph (DAG) that consists of nodes and edges. There are two classes of nodes: (stateful) operators, and (logical) intermediate results (IRs). For example, the graph below consists of five operators (circles), and three intermediate results. Operators abstract computation (e.g., transformations, joins, etc), state (e.g., a persistent counter), as well as data sources (e.g. reading data from a file system, a socket, a message queue, etc.), and data sinks. Operators produce intermediate results, as well as updates to state. An intermediate result is a logical handle (pointer) to the data that is produced by one operator. An intermediate result can be consumed by one or more operators. Intermediate results are logical in the sense that the data they point to may or may not be materialized on disk. When the JobGraph is scheduled in a cluster for execution, it is parallelized to form an ExecutionGraph that consists of tasks (parallel instances of operators), and intermediate result partitions (IRPs).
-
-\begin{figure}[ht]
-\centering
-\begin{tikzpicture}
-[shorten >=1pt,node distance=1.75cm,>=stealth',initial text=, font=\tiny]
-\tikzstyle{op}=[circle, draw=blue!50,very thick,fill=blue!20]
-\tikzstyle{ir}=[cylinder, cylinder uses custom fill, cylinder body fill=orange!50, cylinder end fill=orange!50, shape border rotate=90, aspect=0.35, draw, minimum size=1cm, text width=0.5cm, align=center]
-
-\node[op] (op_1) {~~~~~~~};
-\node[ir] (ir_1) [right of = op_1] {~~~~~~~};
-\node[op] (op_2) [right of = ir_1] {~~~~~~~};
-\node[ir] (ir_2) [right of = op_2] {~~~~~~~};
-\node[op] (op_3) [below of = op_2] {~~~~~~~};
-\node[ir] (ir_3) [right of = op_3] {~~~~~~~};
-\node[op] (op_4) [right of = ir_2] {~~~~~~~};
-\node[op] (op_5) [right of = ir_3] {~~~~~~~};
-			
-\path[->] 	
-			(op_1) 	edge node [above] {} (ir_1)
-			(ir_1) 	edge node [above] {} (op_2)
-			(op_2) 	edge node [above] {} (ir_2)
-			(ir_2) 	edge node [above] {} (op_4)
-			(op_3) 	edge node [above] {} (ir_3)
-			(ir_3) 	edge node [above] {} (op_4)
-			(ir_3) 	edge node [above] {} (op_5)
-			;
-\end{tikzpicture}
-\label{fig:JobGraph}
-\caption{The JobGraph is the logical view of a Flink job.}
-\end{figure}
+\para{The Job Graph.} Flink's execution model is based on the Job Graph, a directed acyclic graph (DAG) that consists of nodes and edges. There are two classes of nodes: (stateful) operators, and (logical) intermediate results (IRs) as presented on Figure \autoref{fig:JobGraph}. For example, the aforementioned graph consists of five operators (circles), and three intermediate results (cylinders). Operators abstract computation (e.g., transformations, joins, etc), state (e.g., a persistent counter), as well as data sources (e.g. reading data from a file system, a socket, a message queue, etc.), and data sinks. Operators produce intermediate results, as well as updates to state. An intermediate result is a logical handle (pointer) to the data that is produced by one operator. An intermediate result can be consumed by one or more operators. Intermediate results are logical in the sense that the data they point to may or may not be materialized on disk. When the JobGraph is scheduled in a cluster for execution, it is parallelized to form an ExecutionGraph that consists of tasks (parallel instances of operators), and intermediate result partitions (IRPs).
 
 
 \para{Data Transfer.} The unit of data transfer in the Flink runtime is a buffer. Buffers contain one or more records, and a record can span multiple buffers. Buffers are requested and relinquished from local buffer pools, shared among operators that live in the same task manager. An IRP is simply a collection of buffers. Work in Flink progresses (i.e., records flow through the pipeline) as long as there are buffers available, essentially implementing distributed blocking queues (the logical streams) with bounded capacity (the amount of memory available to the buffer pools, which can be configured by the user). This mechanism, in addition to implementing record network transfers doubles down as a natural way to backpressure the flow in the case of slow operators (including external systems that consume data). 

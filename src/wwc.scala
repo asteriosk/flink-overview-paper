@@ -5,8 +5,7 @@ object WindowWordCount {
     val text = env.socketTextStream("localhost", 9999)
 
     val counts = text
-	.flatMap {line =>
-		    line.toLowerCase.split("\\W+")
+	.flatMap {line => line.toLowerCase.split("\\W+")
 				.filter { w => w.nonEmpty }}
     .map {w =>  (w, 1) }
     .keyBy(0)
