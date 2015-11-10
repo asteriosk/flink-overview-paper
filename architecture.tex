@@ -1,0 +1,25 @@
+%!TEX root = paper.tex
+
+\section{System Architecture}
+
+In this section we lay out the architecture of Flink as a software stack, and as a distributed system. While Flink's stack of APIs continues to grow, we can distinguish four main layers: deployment, core, APIs, and libraries.
+
+\begin{figure}[h!]
+	\centering  	
+  	\includegraphics[width=.55\textwidth]{figs/stack.pdf}
+	\vspace{-2mm}
+	\caption{The Flink software stack.}
+	\vspace{-3mm}
+	\label{fig:FlinkStack}
+\end{figure}
+
+\para{Flink's Runtime and APIS.} The core of Flink is the distributed dataflow engine, which executes dataflow programs called Job Graphs. A Job Graph is a DAG of operators and connections between operators. There are two ``core'' APIs in Flink: the DataSet API for processing finite data sets (often referred to as ``batch processing''), and the DataStream API for processing potentially unbounded data streams (often referred to as ``stream processing''). Flink's core runtime engine can be seen as a streaming dataflow engine, and both the DataSet and DataStream APIs create programs (Job Graphs) accepted by this engine. On top of the core APIs, Flink bundles ``domain-specific'' libraries and APIs that generate DataSet and DataStream API programs. Currently these are the following:
+\begin{inparaenum}[i)]
+  \item Gelly, an API and library for processing graphs,
+  \item FlinkML, an API and library for composing Machine Learning pipelines and
+  \item Table, an API similar in spirit to Microsoft's LINQ.
+\end{inparaenum}
+A Flink cluster comprises of three types of processes: the client, the JobManager, and the TaskManager. The client takes the program code (written in a mixture of Flink's APIs), transforms it to a Job Graph, and submits it to the JobManager. The compilation process involves a type extraction and checking phase that generates serializers and comparators for all used types. DataSet programs, also go through a cost-based query optimization phase, similar to the physical optimizations performed by relational query optimizers (more details in Section X).
+
+The JobManager is Flink's master node. It coordinates all message-passing during job execution by sending heartbeats to the TaskManagers, receiving statistics, controls the tasks' lifecycle,  coordinates the fault tolerance machanisms. The actual data processing takes place in the TaskManagers, or worker processes that they execute several tasks in multiple threads, and maintain data structures shared by all tasks (e.g., buffer pools) executed by a TM. TMs communicate directly with each other using a multiplexed TCP connection per TM pair. 
+

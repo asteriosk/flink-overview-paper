@@ -1,0 +1,35 @@
+%!TEX root = paper.tex
+
+\section{Stream Analytics on Top of Dataflows}
+\label{sec:windows}
+
+
+Flink's DataStream API implements a full stream analytics framework on top of Flink's runtime, including the mechanisms to manage time (including out-of-order event processing), defining windows, and maintaining and updating user-defined state. The streaming API is based on the notion of a DataStream, a (possibly unbounded) immutable collection of elements of a given type. Since the Flink runtime already has pipelined data transfers, continuous stateful operators, and a fault tolerance mechanism for consistent state updates, overlaying a stream processor on top of it essentially boils down to implementing a windowing system and a state interface.The programming model of Flink's streaming API,  builds on two basic abstract data types, namely data streams and window streams. Each of the two supports specific operations since they exhibit different properties. For example, windows support transformations that are only possible on bounded collections such as joins, groupings and aggregations. Other transformations, such as (flat)map are  can be applied incrementally on data streams.
+
+% Give an example here instead of simplicity
+The API is designed with simplicity in mind, while at the same time providing powerful tools to deal with time and uncertainty. Here is, for example, a word count program on a simple  time-based window:
+
+\lstinputlisting[label=list:WindowWordCount,caption=WindowWordCount Scala implementation,language=Java]{src/wwc.scala}
+
+Flink distinguishes between two notions of time: 
+\begin{description}
+\item[Event time] is the time that an event actually happened (e.g., the time that a sensor emitted a signal, or the time that a person tapped on their smartphone).
+\item[Processing time] is the wall-clock time of the machine that is processing the data.
+\end{description}
+
+In distributed systems, there is an arbitrary lag between event-time and processing-time \cite{akidau2015dataflow}. This may mean arbitrary delays for getting an answer based on event-time semantics. To avoid arbitrary delays these systems regularly insert special events called ``low watermarks''  that include a time attribute $t$ indicating that all events lower than $t$ have already entered the system. The watermarks aid the execution engine to process events in the correct event order. 
+
+Flink programs that are based on processing time, rely on the machine clocks, and hence a less reliable notion of time, but exhibit the best latency. Programs that are based on event time provide the most reliable semantics, but may exhibit latency due to event time-processing time lag. Flink includes a third notion of time as a special case of event time called ingestion time, which is the time that events enter the system. This provides  a lower latency than event-time semantics, and avoids the arbitrary processing time semantics.
+
+\para{Streaming Windows.} A window defines a logical group of records that are processed together. Flink's windowing system largely follows the Dataflow model~\cite{akidau2015dataflow} proposed by Google. A window definition consists of three building blocks: a window assigner, optionally a trigger, and optionally an evictor. 
+The assigner predefines the logical groups to which each record belongs, e.g. count-based or time-based periodic windows. The trigger defines when the window operation is performed on each group. The evictor defines which records to keep in each group. The following example defines windows that operate in event time of 6 seconds that slide every 2 seconds (Assigner). The window results are computed once the watermark passes the end of the window (Trigger). Flink also offer short hands for commonly used functionalities.
+
+\lstinputlisting[label=list:GenWindow,caption=Window API functionalities,language=Java]{src/genwin.scala}
+
+A global window creates a single logical group. The following example defines a global window (assigner) that invokes the operation on every 1000 events (trigger) while keeping the last 100 elements (evictor). 
+
+\lstinputlisting[label=list:GlobalWindow,caption=Global Window usage,language=Java]{src/glowin.scala}
+
+Note that streams are already partitioned on a key before windowing, so the above is a local operator that does not require coordination between machines. This mechanism can be used to implement a wide variety of windowing functionality~\cite{akidau2015dataflow}, and Flink comes bundled with syntactic sugar for the most common window definitions (e.g., time- and count-based windows). 
+
+Simple programs in Flink's DataStream API looks like functional, side effect-free programs consisting of transformations on unbounded immutable collections. We incorporate mutable state in the API by providing interfaces to users to register any local variable within a transformation with the system's checkpointed mechanism and freely use this variable in their code. 

@@ -1,0 +1,25 @@
+%!TEX root = paper.tex
+
+\section{Related work}
+\label{sec:related}
+There is, by now, a wealth of engines for distributed batch and stream analytical processing. We categorise these systems below. 
+
+\para{Batch Processing.} Apache Hadoop~\cite{CUSTOM:web/Hadoop} is the most popular open source system for large-scale data analysis that is based on the MapReduce paradigm~\cite{DBLP:journals/cacm/DeanG08}. Dryad~\cite{isard2007dryad}, introduced embedded user-defined functions in general DAG-based dataflows and was used by SCOPE~\cite{scopeOptimizer} which added a language and an SQL optimizer on top of it. Apache Tez~\cite{CUSTOM:web/Tez} can be seen as an open source implementation of the ideas proposed in Dryad. MPP databases [], and recent open-source implementations~\cite{CUSTOM:web/Drill} [Impala] restrict their API to SQL variants. Very similar to Flink, Apache Spark~\cite{CUSTOM:web/Spark} is a very popular data processing framework that implements a DAG-based processing framework, provides an SQL optimizer, performs driver-based iterations, and treats stream computations as micro-batches. In contrast, Flink is the only system that
+\begin{inparaenum}[i)]
+  \item supports an optimizer that can optimize DAG programs beyond SQL queries,
+  \item is able to perform very efficient iterative processing natively,
+  \item includes stream processing as a first-class citizen, enabling more complex use cases than micro-batches.
+\end{inparaenum}
+
+\para{Stream Processing.} There is a wealth of work on streaming systems, that includes commercial systems like StreamBase, Microsoft StreamInsight, and IBM InfoSphere Streams. Many of these systems are based on research in the database community in projects such as Telegraph [], Aurora/Borealis~\cite{abadi2005design}, Stanford STREAM~\cite{arasu2004stream}, Trill~\cite{chandramouli2014trill} and IBM System S~\cite{chandramouli2014trill}. Most of the above systems are either
+\begin{inparaenum}[i)]
+  \item academic prototypes,
+  \item closed-source commercial products,
+  \item do not scale the computation horizontally on clusters of commodity servers.
+\end{inparaenum}
+Newer open source streaming systems that scale horizontally, such as Apache Storm~\cite{CUSTOM:web/Storm} and Apache Samza~\cite{CUSTOM:web/Samza}, provide low level APIs and offer only at-least-once and at-most-once guarantees. MillWheel~\cite{akidau2013millwheel}, a closed-source system at Google provides exactly-once guarantees with low latency and is used by Google Dataflow~\cite{akidau2015dataflow} to implement  out-of-order stream analytics. To the best of our knowledge, Flink is the only open-source project that
+\begin{inparaenum}[i)]
+  \item offers high level APIs and processing libraries,
+  \item provides state management with exactly-once guarantees and
+  \item achieves high throughput and low latency, serving both batch and true streaming computations equally well.
+\end{inparaenum}
