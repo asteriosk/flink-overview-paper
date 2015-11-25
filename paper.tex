@@ -9,6 +9,11 @@
 % trademark symbol
 \usepackage{textcomp}
 
+\usepackage{float}
+
+
+\newcommand{\TODO}[1]{\textcolor{red}{TODO: #1}}
+
 % code listings
 \usepackage{listings}
 
@@ -50,11 +55,22 @@
 
 \usepackage{subfigure}
 
+\def\definitionautorefname{Definition}
+\def\sectionautorefname{Section}
+\def\subsectionautorefname{Section}
+\def\subsubsectionautorefname{Section}
+\def\algorithmautorefname{Algorithm}
+\def\figureautorefname{Figure}
+
+
+
+
 \begin{document}
 
 
 
 \title{Apache Flink\texttrademark: Unified Stream and Batch Processing \\ in a Single Engine}
+
 \author{Authors}
 
 \maketitle

@@ -1,10 +1,11 @@
 %!TEX root = paper.tex
-
+\vspace{-4mm}
 \section{Related work}
+\vspace{-2mm}
 \label{sec:related}
 There is, by now, a wealth of engines for distributed batch and stream analytical processing. We categorise these systems below. 
 
-\para{Batch Processing.} Apache Hadoop\footnote{https://hadoop.apache.org/} is the most popular open source system for large-scale data analysis that is based on the MapReduce paradigm~\cite{DBLP:journals/cacm/DeanG08}. Dryad~\cite{isard2007dryad}, introduced embedded user-defined functions in general DAG-based dataflows and was used by SCOPE~\cite{scopeOptimizer} which added a language and an SQL optimizer on top of it. Apache Tez\footnote{https://tez.apache.org/} can be seen as an open source implementation of the ideas proposed in Dryad. MPP databases \cite{dewitt1990gamma}, and recent open-source implementations~\cite{CUSTOM:web/Drill,kornacker2015impala} restrict their API to SQL variants. Similar to Flink, Apache Spark\footnote{spark.apache.org} is a data processing framework that implements a DAG-based processing framework, provides an SQL optimizer, performs driver-based iterations, and treats stream computations as micro-batches. In contrast, Flink is the only system that 
+\para{Batch Processing.} Apache Hadoop is the most popular open source system for large-scale data analysis that is based on the MapReduce paradigm~\cite{DBLP:journals/cacm/DeanG08}. Dryad~\cite{isard2007dryad}, introduced embedded user-defined functions in general DAG-based dataflows and was used by SCOPE~\cite{scopeOptimizer} which added a language and an SQL optimizer on top of it. Apache Tez~\cite{saha2015apache} can be seen as an open source implementation of the ideas proposed in Dryad. MPP databases \cite{dewitt1990gamma}, and recent open-source implementations~\cite{CUSTOM:web/Drill,kornacker2015impala} restrict their API to SQL variants. Similar to Flink, Apache Spark \cite{DBLP:conf/hotcloud/ZahariaCFSS10} is a data processing framework that implements a DAG-based processing framework, provides an SQL optimizer, performs driver-based iterations, and treats stream computations as micro-batches. In contrast, Flink is the only system that 
 \begin{inparaenum}[i)]
   \item supports an optimizer that can optimize DAG programs beyond SQL queries,
   \item is able to perform very efficient iterative processing natively,
@@ -17,7 +18,7 @@ There is, by now, a wealth of engines for distributed batch and stream analytica
   \item closed-source commercial products, or 
   \item do not scale the computation horizontally on clusters of commodity servers.
 \end{inparaenum}
-Newer open source streaming systems that scale horizontally, such as Apache Storm\footnote{http://storm.apache.org/} and Apache Samza\footnote{http://samza.apache.org/}, provide low level APIs and offer only at-least-once and at-most-once guarantees. MillWheel~\cite{akidau2013millwheel}, a closed-source system at Google provides exactly-once guarantees with low latency and is used by Google Dataflow~\cite{akidau2015dataflow} to implement  out-of-order stream analytics. To the best of our knowledge, Flink is the only open-source project that
+Newer open source streaming systems that scale horizontally, such as Apache Storm and Apache Samza\footnote{Those can be found under \url{http://storm.apache.org/} and \url{http://samza.apache.org/} respectively.}, provide low level APIs and offer only at-least-once and at-most-once guarantees. MillWheel~\cite{akidau2013millwheel}, a closed-source system at Google provides exactly-once guarantees with low latency and is used by Google Dataflow~\cite{akidau2015dataflow} to implement  out-of-order stream analytics. To the best of our knowledge, Flink is the only open-source project that
 \begin{inparaenum}[i)]
   \item offers high level APIs and processing libraries,
   \item provides state management with exactly-once guarantees and
