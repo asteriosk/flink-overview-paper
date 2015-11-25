@@ -10,39 +10,25 @@ A Flink cluster comprises of three types of processes: the client, the JobManage
 
 The JobManager is Flink’s master node. It coordinates all message-passing during job execution by sending heartbeats to the TaskManagers and receiving statistics, controls the tasks’ lifecycle, and coordinates checkpointing used for recovery. The actual data processing takes place in the TaskManagers that they execute several tasks in multiple threads, and maintain data structures shared by all tasks (e.g., buffer pools) executed by a TM. TMs communicate directly with each other using a multiplexed TCP connection per TM pair. 
 
+
+
+
 \begin{figure}
 \centering
-	\includegraphics[width=.75\textwidth]{figs/process_model_updated}
-\caption{Flink's Process Model.}
-\end{figure}
-
-\begin{figure}[ht]
-\centering     %%% not \center
+\begin{minipage}{.52\textwidth}
+\centering
+	\includegraphics[width=.9\textwidth]{figs/architecture.pdf}
+    \caption{Flink's Process Model.}
+    \label{fig:process-model}
+\end{minipage}%
+\begin{minipage}{0.52\textwidth}
+\centering
+\includegraphics[width=.8\textwidth]{figs/stack.pdf}
 \label{fig:FlinkStack}
-\includegraphics[width=.5\textwidth]{figs/stack.pdf}
-% \subfigure[The JobGraph is the logical view of a Flink job.]{\label{fig:JobGraph}\begin{tikzpicture}
-% [shorten >=1pt,node distance=1.75cm,>=stealth',initial text=, font=\tiny]
-% \tikzstyle{op}=[circle, draw=blue!50,very thick,fill=blue!20, text width=0.5cm]
-% \tikzstyle{ir}=[cylinder, cylinder uses custom fill, cylinder body fill=orange!50, cylinder end fill=orange!50, shape border rotate=90, aspect=0.35, draw, minimum size=1cm, text width=0.5cm, align=center]
-
-% \node[op] (op_1) {~~~~~~~};
-% \node[ir] (ir_1) [right of = op_1] {~~~~~~~};
-% \node[op] (op_2) [right of = ir_1] {~~~~~~~};
-% \node[ir] (ir_2) [right of = op_2] {~~~~~~~};
-% \node[op] (op_3) [below of = op_2] {~~~~~~~};
-% \node[ir] (ir_3) [right of = op_3] {~~~~~~~};
-% \node[op] (op_4) [right of = ir_2] {~~~~~~~};
-% \node[op] (op_5) [right of = ir_3] {~~~~~~~};
-			
-% \path[->] 	
-% 			(op_1) 	edge node [above] {} (ir_1)
-% 			(ir_1) 	edge node [above] {} (op_2)
-% 			(op_2) 	edge node [above] {} (ir_2)
-% 			(ir_2) 	edge node [above] {} (op_4)
-% 			(op_3) 	edge node [above] {} (ir_3)
-% 			(ir_3) 	edge node [above] {} (op_4)
-% 			(ir_3) 	edge node [above] {} (op_5)
-% 			;
-% \end{tikzpicture}}
-\caption{Flink's software stack.}
+\caption{Flink's Software Stack.}
+\end{minipage}
 \end{figure}
+
+
+
+
