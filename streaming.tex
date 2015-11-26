@@ -45,22 +45,18 @@ Note that streams are already partitioned on a key before windowing, so the abov
 
 Simple programs in Flink’s DataStream API look like functional, side effect-free programs consisting of transformations on unbounded immutable collections. However, to cover the need for stateful operations, we incorporate explicit mutable state in the API by providing: $i)$ Operator interfaces or annotations to statically register explicit local variables within the scope of an operation;  $ii)$ an OperatorState abstraction for marking partionable dynamic state and its operations.  Flink’s checkpointing mechanism guarantees that any registered state is durably accessed exactly-once per operation via checkpointing. 
 
-As an example consider a stream wordNums containing words and an associated number for each word. We can use the partitionable  OperatorState in a stateful map function to compute a rolling average number seen per word by marking a sum and count per word as explicit states along with their updates:
+As a simple example consider a map operator that computes a continuous average for a given stocks price. For this we need to keep a state with the current count and total sum for each stock in order to compute the average:
 
-\begin{lstlisting}[language=Java]
-wordNums.keyBy(0).map(new StatefulAverage()) 
 
-public class StatefulAverage implements RichMapFunction<Long, Double> {
-    private OperatorState<Long> sum;
-    private OperatorState<Long> count;
-
-    public Double reduce(Tuple2<String,Long> num) {
-        count.update(count.value() + 1);
-        sum.update(sum.value() + num.f1)
-        return new Tuple2(num.f0, (double) sum.value()/count.value());
-    }
-...
-}
+\begin{lstlisting}[language=Scala]
+val priceStream: DataStream[(String,Double)] = ...
+ 
+val avgPerStock : DataStream[(String, Double)] = source.keyBy(0).mapWithState(
+    (in, state: Option[(Int, Double)]) => {
+		val (count, sum) = state.getOrElse((0,0.0))
+		val newState = (count + 1, sum + in._2)
+		((in._1, newState._2/newState._1), newState)
+	}
 \end{lstlisting}
 
 \subsection{Fault Tolerance via Asynchronous Snapshots}
