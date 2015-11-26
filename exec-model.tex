@@ -11,13 +11,39 @@ The dataflow graph, as depicted in \autoref{fig:dataflow}, is a directed acyclic
 The stateful operators (which may be stateless as a special case) implement all processing logic, e.g., filters, hash joins, stream window functions, etc. Many of these operators are implementations of textbook versions of well known algorithms. \autoref{sec:streaming} provides details on the implementation of windowing operators. Streams distribute data between producing and consuming operators in various patterns, such as point-to-point, broadcast, re-partition, fan-out, or merge.
 
 
+
+
+
+
+
 \begin{figure}[t!]
-\centering
-\includegraphics[width=.7\textwidth]{figs/dataflow}
-\vspace{-3mm}
-\caption{A simple dataflow graph comprising stateful operators (sources, sinks and operators), and intermediate streams (transient and materialized).}
-\label{fig:dataflow}
+\begin{minipage}{1.1\linewidth}
+      \centering
+       \hspace{-0.05\linewidth}
+      \begin{minipage}{0.60\linewidth}
+        \begin{figure}[H]
+        \centering
+        \includegraphics[width=.999\textwidth]{figs/dataflow}
+        \vspace{-3mm}
+        \caption{A simple dataflow graph comprising stateful operators (sources, sinks and operators), and intermediate streams (transient and materialized).}
+        \label{fig:dataflow}
+        \end{figure}
+      \end{minipage}
+      % \hspace{0.05\linewidth}
+      \begin{minipage}{0.4\linewidth}
+          \begin{figure}[H]
+				\includegraphics[width=.95\textwidth]{figs/latency-throughput.pdf}
+				\vspace{-3mm}
+    			\caption{Latency vs. Throughput.}
+    			\label{fig:latency-throughput}
+          \end{figure}
+      \end{minipage}
+  \end{minipage}
 \end{figure}
+
+
+
+
 
 
 
