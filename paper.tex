@@ -26,11 +26,13 @@
 \definecolor{mauve}{rgb}{0.58,0,0.82}
 
 % there is no built in support or Scala yet, good enough
-\lstset{frame=tb,
+\lstset{frame=l,
   language=Java,
   aboveskip=3mm,
   belowskip=3mm,
   showstringspaces=false,
+  xleftmargin=5pt,
+%   framexleftmargin=-1pt,
   columns=flexible,
   basicstyle={\scriptsize\ttfamily},
   numbers=none,
@@ -43,8 +45,8 @@
   tabsize=4,
   %for scala
   emph={%  
-    object, def, val, zip%
-    },emphstyle={\color{blue}}%
+    object, def, val, zip, window, trigger, evict%
+    },emphstyle={\color{blue}\textbf}%
 }%
 
 % url references
@@ -89,8 +91,9 @@ Apache Flink is an open source system for processing streaming and batch data. F
 \section{Conclusion}
 \label{sec:conclusions}
 In this paper we presented Apache Flink, a platform that implements one universal dataflow engine designed to perform both stream and batch analytics. Flink's dataflow engine treats operator state and logical intermediate results as first class citizens, and is used by the batch and a data stream APIs. The streaming API that is built on top of  Flink's streaming dataflow engine, provides the means to keep recoverable state, and to partition, transform, discretize and aggregate a data stream. While batch computations are, in theory, a special case of a streaming computations, Flink treats them specially, by optimizing their execution with a novel query optimizer, and by implementing blocking operators that gracefully spill to disk in the absence of memory. 
-
+{
+\small
 \bibliographystyle{abbrv}
 \bibliography{references}
-
+}
 \end{document}

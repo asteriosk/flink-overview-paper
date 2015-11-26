@@ -5,16 +5,9 @@
 
 Although users can write Flink programs using a multitude of APIs, all Flink programs eventually compile down to a common representation: the dataflow graph. The dataflow graph is executed by Flink's runtime engine, the common layer underneath both the batch processing (DataSet) and stream processing (DataStream) APIs.
 
-
 \subsection{Dataflow Graphs}
 The dataflow graph, as depicted in \autoref{fig:dataflow}, is a directed acyclic graph (DAG) that consists of (i) stateful operators, and (ii) data streams that represent data produced by an operator and are available for consumption by operators. Since dataflow graphs are executed in a data-parallel fashion, operators are parallelized into one or more parallel instances called \emph{subtasks} and streams are split into one or more \emph{stream partitions} (one partition per producing subtask). 
 The stateful operators (which may be stateless as a special case) implement all processing logic, e.g., filters, hash joins, stream window functions, etc. Many of these operators are implementations of textbook versions of well known algorithms. \autoref{sec:streaming} provides details on the implementation of windowing operators. Streams distribute data between producing and consuming operators in various patterns, such as point-to-point, broadcast, re-partition, fan-out, or merge.
-
-
-
-
-
-
 
 \begin{figure}[t!]
 \begin{minipage}{1.1\linewidth}
@@ -24,7 +17,7 @@ The stateful operators (which may be stateless as a special case) implement all 
         \begin{figure}[H]
         \centering
         \includegraphics[width=.999\textwidth]{figs/dataflow}
-        \vspace{-3mm}
+        \vspace{-5mm}
         \caption{A simple dataflow graph.}
         \label{fig:dataflow}
         \end{figure}
@@ -34,7 +27,7 @@ The stateful operators (which may be stateless as a special case) implement all 
       \begin{minipage}{0.32\linewidth}
           \begin{figure}[H]
 				\includegraphics[width=.99\textwidth]{figs/latency-throughput.pdf}
-				\vspace{-1mm}
+				\vspace{-7mm}
     			\caption{The effect of buffer-timeout in latency and throughput.}
     			\label{fig:latency-throughput}
           \end{figure}
@@ -43,38 +36,26 @@ The stateful operators (which may be stateless as a special case) implement all 
 \end{figure}
 
 
-
-
-
-
-
 \subsection{Data Exchange through Intermediate Data Streams}
-\TODO{Asterios does not like the structure of this subsection. Minimal changes are needed but will be useful. for now it's a soup of ideas. Good news is, the content is already there.}
-
-Flink's intermediate data streams are the core abstraction for data exchange between operators. The notion of intemediate data streams in Flink is broader than the traditional notion of a continuous transient stream. The particular behavior of a data stream is parameterized by the higher layers in Flink (e.g., the program optimizer used by the DataSet API). 
+Flink's intermediate data streams are the core abstraction for data exchange between operators. An intermediate data stream represents a logical handle to the data that is produced by an operator and can be consumed by one or more operators. Intermediate streams are logical in the sense that the data they point to may or may not be materialized on disk. The particular behavior of a data stream is parameterized by the higher layers in Flink (e.g., the program optimizer used by the DataSet API). 
 
 
-\para{Pipelined and Blocking Data Exchange.} \emph{Pipelined streams} exchange data between concurrently running producers and consumers resulting in pipelined execution. Synchronous streams propagate back pressure from consumer to producer (modulo some elasticity via intermediate buffer pools, in order to compensate for short-term throughput fluctuations). Flink uses these streams for continuous streaming programs, as well as for many parts of batch dataflows, in order to avoid materialization when possible. \emph{Blocking streams}, on the other hand, are applicable to bounded data streams. The decoupled stream buffers all of the producing operator's data before making it available for consumption, thereby separating the producing and consuming operators into different execution stages. Blocking streams naturally require more memory, frequently spill to secondary storage, and do not propagate backpressure. They are used to isolate successive operators against each other (where desired) and in situations where plans with pipeline-breaking operators such as joins, can cause distributed deadlocks.
+\para{Pipelined and Blocking Data Exchange.} \emph{Pipelined intermediate streams} exchange data between concurrently running producers and consumers resulting in pipelined execution. As a result, pipelined streams propagate back pressure from consumers to producers, modulo some elasticity via intermediate buffer pools, in order to compensate for short-term throughput fluctuations. Flink uses pipelined streams for continuous streaming programs, as well as for many parts of batch dataflows, in order to avoid materialization when possible. \emph{Blocking streams}, on the other hand, are applicable to bounded data streams. A blocking stream buffers all of the producing operator's data before making it available for consumption, thereby separating the producing and consuming operators into different execution stages. Blocking streams naturally require more memory, frequently spill to secondary storage, and do not propagate backpressure. They are used to isolate successive operators against each other (where desired) and in situations where plans with pipeline-breaking operators such as joins, may cause distributed deadlocks.
 
-\para{Balancing Latency and Throughput.} Flink’s data exchange mechanisms are implemented around the exchange of buffers. When a data record is ready on the producer side, it is serialized and stored into one or more buffers that can be forwarded to consumers. A buffer in Flink is sent to a consumer either i) as soon as it is full, or ii) when a timeout condition is reached. This enables Flink to achieve, high throughput by setting the size of buffers to a high value, e.g., a few kilobytes, as well as low latency by setting the buffer timeout to a low value e.g., a few milliseconds. \autoref{fig:latency-throughput} shows the effect of buffer-timeouts to the throughput and latency of delivering records in a simple streaming grep job on 30 machines (120 cores). Flink can achieve an observable 99-th percentile latency of 20 milliseconds. The corresponding throughput is 24,500 events per second per core. As we increase the buffer timeout, we see an increase in latency with an increase in throughput, until full throughput is reached (where buffers fill up faster than the timeout expiration). At a buffer timeout of 50 milliseconds, the system reaches full throughput of 750,000 events per second per core with a 99-th percentile latency of 50 milliseconds.
+\para{Balancing Latency and Throughput.} Flink’s data exchange mechanisms are implemented around the exchange of buffers. When a data record is ready on the producer side, it is serialized and split into one or more buffers that can be forwarded to consumers. A buffer is sent to a consumer either i) as soon as it is full, or ii) when a timeout condition is reached. This enables Flink to achieve high throughput by setting the size of buffers to a high value (e.g., a few kilobytes), as well as low latency by setting the buffer timeout to a low value (e.g., a few milliseconds). \autoref{fig:latency-throughput} shows the effect of buffer-timeouts to the throughput and latency of delivering records in a simple streaming grep job on 30 machines (120 cores). Flink can achieve an observable 99-th percentile latency of 20 milliseconds. The corresponding throughput is 24,500 events per second per core. As we increase the buffer timeout, we see an increase in latency with an increase in throughput, until full throughput is reached (where buffers fill up faster than the timeout expiration). At a buffer timeout of 50 milliseconds, the system reaches full throughput of 750,000 events per second per core with a 99-th percentile latency of 50 milliseconds.
 
-\para{Control Events.} Apart from exchanging data, streams in Flink communicate different types of control events. These are special events injected in the data stream by producing operators and are delivered in-order along with all other data records and events within a stream partition. The receiving operators react to these events by performing certain actions upon their arrival. Flink uses special types of control events such as: \vspace{-2mm}
+\para{Control Events.} Apart from exchanging data, streams in Flink communicate different types of control events. These are special events injected in the data stream by operators, and are delivered in-order along with all other data records and events within a stream partition. The receiving operators react to these events by performing certain actions upon their arrival. Flink uses lots of special types of control events, including: \vspace{-2mm}
 \begin{itemize}
 \item \textit{Checkpoint barriers} that coordinate checkpoints by dividing the stream into pre-checkpoint and post-checkpoint (\autoref{sec:fault-tolerance}). \vspace{-3mm}
 \item \textit{Watermarks} signaling the progress of event time within a stream partition (\autoref{sec:streaming-time}). \vspace{-3mm}
 \item \textit{Iteration barriers} signaling that a stream partition has reached the end of a superstep, in Bulk/Stale-Synchronous-Parallel iterative algorithms on top of cyclic dataflows (\autoref{sec:batch-iterations}). \vspace{-1mm}
 \end{itemize}
 
-Control events assume that a stream partition preserves the order of records. To this end, unary operators in Flink consuming a single stream partition, \emph{guarantee a FIFO order of records}. However, operators receiving more than one stream partition merge the streams as records arrive, in order to keep up with the streams' rate and avoid back pressure. As a result, streaming dataflows in Flink do not provide ordering guarantees after any form of repartitioning or broadcasting, and the responsibility of dealing with out-of-order records is left to the operator implementation. We found that this gives the most efficient design, as most operators do not require deterministic order (e.g., hash-joins, maps, etc.), and operators that need to compensate for out-of-order arrivals (such as event time windows) can do that more efficiently as part of the operator logic.
-
-\subsection{Iterative Dataflows}
-\TODO{Should we have a few sentences here? Would describe that cyclic flows enable iterative processing as BSP/SSP in batch [iterations paper, euranova SSP on Flink paper] and simply for streaming programs with feedback. @Stephan, could you make a start here? Just to see how you would like to see it.}
-
-Cycles are formed by special feedback streams. Feedback streams do not act as a dependency (not treated by the scheduler, so Flink keeps simple DAG scheduling techniques) and their contents is treated as operator state (simplifies fault tolerance). 
+As mentioned above, control events assume that a stream partition preserves the order of records. To this end, unary operators in Flink consuming a single stream partition, \emph{guarantee a FIFO order of records}. However, operators receiving more than one stream partition merge the streams as records arrive, in order to keep up with the streams' rate and avoid back pressure. As a result, streaming dataflows in Flink do not provide ordering guarantees after any form of repartitioning or broadcasting, and the responsibility of dealing with out-of-order records is left to the operator implementation. We found that this gives the most efficient design, as most operators do not require deterministic order (e.g., hash-joins, maps, etc.), and operators that need to compensate for out-of-order arrivals (such as event time windows) can do that more efficiently as part of the operator logic.
 
 \subsection{Fault Tolerance}
-
 \label{sec:fault-tolerance}
+
 Flink offers reliable execution with strict exactly-once-processing consistency guarantees and deals with failures via checkpointing and partial re-execution. The general assumption the system makes to effectively provide these guarantees is that the data sources are persistent and replayable. Examples of such sources are files and durable message queues (e.g. Apache Kafka). In practice, non-persistent sources can also be incorporated by keeping a look-ahead log within the state of the source operators.
 
 The checkpointing mechanism of Apache Flink builds on the notion of distributed consistent snapshots/checkpoints to achieve exactly-once-processing guarantees. The possibly unbounded nature of a data stream makes re-computation upon recovery impractical, as possibly months of computation will need to be replayed considering a long running job. To bound recovery time, Flink takes a snapshot of the state of operators, including the current position of the input streams at regular intervals.
@@ -95,21 +76,9 @@ An operator receives barriers from upstream and first performs an alignment phas
 Recovery from failures reverts all operator states to their respective states taken from the last successful snapshot, and restarts the input streams starting from the latest barrier. The maximum amount of re-computation needed upon recovery is limited to the amount of input records between two consecutive barriers. Furthermore,  we note that this strategy does not eliminate the possibility for partial recovery, when upstream backup is applied.
 
 \vspace{1mm}
-\noindent ABS provides several benefits:\vspace{-3mm}
+\noindent ABS provides several benefits:\vspace{-2mm}
 \begin{itemize}
 \item It guarantees exactly-once state updates without ever pausing the computation \vspace{-3mm}
 \item It is completely decoupled other forms of control messages, e.g., by events that trigger the computation of windows, thus not restricting the windowing mechanism to multiples of the checkpoint interval. \vspace{-3mm}
 \item It is completely decoupled from the mechanism used for reliable storage, allowing state to be backed up to file systems, databases, etc, depending on the larger environment in which Flink is used.
 \end{itemize}
-
-% \para{The Job Graph.} Flink's execution model is based on the Job Graph, a directed acyclic graph (DAG) that consists of nodes and edges. There are two classes of nodes: (stateful) operators, and (logical) intermediate results (IRs) as presented on Figure \autoref{fig:JobGraph}. For example, the aforementioned graph consists of five operators (circles), and three intermediate results (cylinders). Operators abstract computation (e.g., transformations, joins, etc), state (e.g., a persistent counter), as well as data sources (e.g. reading data from a file system, a socket, a message queue, etc.), and data sinks. Operators produce intermediate results, as well as updates to state. An intermediate result is a logical handle (pointer) to the data that is produced by one operator. An intermediate result can be consumed by one or more operators. Intermediate results are logical in the sense that the data they point to may or may not be materialized on disk. When the JobGraph is scheduled in a cluster for execution, it is parallelized to form an ExecutionGraph that consists of tasks (parallel instances of operators), and intermediate result partitions (IRPs).
-
-
-% \para{Data Transfer.} The unit of data transfer in the Flink runtime is a buffer. Buffers contain one or more records, and a record can span multiple buffers. Buffers are requested and relinquished from local buffer pools, shared among operators that live in the same task manager. An IRP is simply a collection of buffers. Work in Flink progresses (i.e., records flow through the pipeline) as long as there are buffers available, essentially implementing distributed blocking queues (the logical streams) with bounded capacity (the amount of memory available to the buffer pools, which can be configured by the user). This mechanism, in addition to implementing record network transfers doubles down as a natural way to backpressure the flow in the case of slow operators (including external systems that consume data). 
-
-% We mentioned that the intermediate results are logical handles to the data, rather than the data itself. Internally, intermediate results are abstract classes with many implementations. These implementations can perform pipelined data exchange, and blocking data exchange.
-
-% \para{Pipelined Data Exchange.} Pipelining (also called intra-operator parallelism), means that a producing and a consuming operator make progress at the same time, without the consumer waiting for the producer to finish. Pipelining is required in streaming systems, and is also used in batch systems to reduce latency. Flink implements pipelining by implementing intermediate results which activate network transfers between the producer task and consumer task,  as soon as their first buffer is available. Flink allows the configuration of its buffers' size and timeout. A buffer is sent to its consumer task as soon it is filled,  or as soon as a timeout is reached. Hence, by setting the buffer size and/or timeout to lower values, one can reduce latency, while achieving the opposite effect (i.e., high throughput) by using higher values.
-
-% \para{Blocking Data Exchange.} Sometimes it is desirable to break a job into stages, scheduling and executing each stage individually (e.g., to enable interactive processing, and better staging of resources in large batch jobs). To do that, the system has to materialize intermediate results (in memory or disk). Flink implements blocking data exchange via an intermediate result that signals its availability only when all the buffers from the producer have been materialized. The cached buffers can double down as a materialized reusable intermediate result. 
-

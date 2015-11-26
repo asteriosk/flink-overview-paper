@@ -1,8 +1,6 @@
 %!TEX root = paper.tex
-
 \section{Stream Analytics on Top of Dataflows}
 \label{sec:streaming}
-
 
 Flink’s DataStream API implements a full stream analytics framework on top of Flink’s runtime, including the mechanisms to manage time (including out-of-order event processing), defining windows, and maintaining and updating user-defined state. The streaming API is based on the notion of a DataStream, a (possibly unbounded) immutable collection of elements of a given type. Since Flink’s runtime already supports pipelined data transfers, continuous stateful operators, and a fault tolerance mechanism for consistent state updates, overlaying a stream processor on top of it, essentially boils down to implementing a windowing system and a state interface. As noted, these are invisible to the runtime, which sees windows as just an implementation of stateful operators. 
 
@@ -10,7 +8,7 @@ Flink’s DataStream API implements a full stream analytics framework on top of 
 \label{sec:streaming-time}
 Flink distinguishes between two notions of time: i) event time, that  stands for the time that an event was generated at its origin (e.g., the time that a sensor or a mobile device generated a signal) and ii) processing time, that is the wall-clock time of the machine that is processing the data.
 
-In distributed systems there is an arbitrary skew between event-time and processing-time \cite{akidau2015dataflow}. This may mean arbitrary delays for getting an answer based on event-time semantics. To avoid arbitrary delays these systems regularly insert special events called ‘low watermarks’ that mark a global progress measure. In the case of time progress for example, that includes a time attribute ‘t’ indicating that all events lower than ‘t’ have already entered an operator. The watermarks aid the execution engine to process events in the correct event order and serialize operations (such as window computations) via a unified measure of progress.
+In distributed systems there is an arbitrary skew between event-time and processing-time \cite{akidau2015dataflow}. This may mean arbitrary delays for getting an answer based on event-time semantics. To avoid arbitrary delays these systems regularly insert special events called ‘low watermarks’ that mark a global progress measure. In the case of time progress for example, that includes a time attribute $t$ indicating that all events lower than $t$ have already entered an operator. The watermarks aid the execution engine to process events in the correct event order and serialize operations (such as window computations) via a unified measure of progress.
 
 Watermarks originate at the sources of a topology, where we can determine the time inherent in future elements. The watermarks propagate from the sources throughout the other operators of the data flow. Operators decide how they react to watermarks. Simple operations such as map/filter just forward the watermarks they receive, while more complex operators that do calculation based on the watermarks (e.g., event time windows) first compute results triggered by a watermark and then forward it. If an operation has more than one input, the system only forwards the minimum of the incoming watermarks to the operator, ensuring correct results. 
 
@@ -20,20 +18,21 @@ Flink programs that are based on processing time, rely on the machine clocks, an
 \subsection{Stateful Stream Processing}
 While most operators in Flink’s DataStream API look like functional, side-effect free operators, they provide support for efficient stateful computations. State is critical to many applications such as machine learning model building, graph analysis, user session handling and window aggregations. There is a plethora of different types of states depending on the use case. For example, the state can be something as simple as a counter or a sum, or more complex, such as a classification tree or a large sparse matrix often used in machine learning applications. Stream windows can also be modelled, in principle, by stateful operators which assign records to continuously updated buckets kept in memory as part of the operator state. 
 
-To cover a lot of different use cases, in Flink state is made explicit and is incorporated in the API by providing: $i)$ Operator interfaces or annotations to statically register explicit local variables within the scope of an operator;  $ii)$ an OperatorState abstraction for marking partitioned key-value states and the associated operations. Users can also configure how the state is stored and checkpointed using the StateBackend abstractions provided by the system, allowing very flexible custom state management in the streaming applications. Flink’s checkpointing mechanism (\autoref{sec:fault-tolerance}) guarantees that any registered state is durable with exactly-once update semantics. 
+Ιn Flink state is made explicit and is incorporated in the API by providing: i)~operator interfaces or annotations to statically register explicit local variables within the scope of an operator;  ii)~an operator state abstraction for marking partitioned key-value states and the associated operations. Users can also configure how the state is stored and checkpointed using the StateBackend abstractions provided by the system, allowing very flexible custom state management in the streaming applications. Flink’s checkpointing mechanism (\autoref{sec:fault-tolerance}) guarantees that any registered state is durable with exactly-once update semantics. 
+\vspace{-8mm}
 
-As a simple example consider a map operator that computes a continuous average for a given stocks price. For this we need to keep a state with the current count and total sum for each stock in order to compute the average:
+% As a simple example consider a map operator that computes a continuous average for a given stocks price. For this we need to keep a state with the current count and total sum for each stock in order to compute the average:
 
-\begin{lstlisting}[language=Scala]
-val priceStream: DataStream[(String,Double)] = ...
+% \begin{lstlisting}[language=Java]
+% val priceStream: DataStream[(String,Double)] = ...
  
-val avgPerStock : DataStream[(String, Double)] = source.keyBy(0).mapWithState(
-    (in, state: Option[(Int, Double)]) => {
-		val (count, sum) = state.getOrElse((0,0.0))
-		val newState = (count + 1, sum + in._2)
-		((in._1, newState._2/newState._1), newState)
-	}
-\end{lstlisting}
+% val avgPerStock : DataStream[(String, Double)] = source.keyBy(0).mapWithState(
+%     (in, state: Option[(Int, Double)]) => {
+% 		val (count, sum) = state.getOrElse((0,0.0))
+% 		val newState = (count + 1, sum + in._2)
+% 		((in._1, newState._2/newState._1), newState)
+% 	}
+% \end{lstlisting}
 
 \subsection{Stream Windows}
 Incremental computations over unbounded streams are often evaluated over continously evolving logical views, called windows. Apache Flink incorporates windowing within a stateful operator which is configured via a flexible declaration composed out of three core functions: a window \textit{assigner} and optionally a \textit{trigger} and an \textit{evictor}. All three functions can be selected among a pool of common predefined implementations (e.g. sliding time windows) or can be explicitly defined by the user as UDFs.
@@ -46,7 +45,7 @@ stream
   .trigger(EventTimeTrigger.create())
 \end{lstlisting}
 
-A global window creates a single logical group. The following example defines a global window (assigner) that invokes the operation on every 1000 events (trigger) while keeping the last 100 elements (evictor). 
+\noindent A global window creates a single logical group. The following example defines a global window (assigner) that invokes the operation on every 1000 events (trigger) while keeping the last 100 elements (evictor). 
 
 \begin{lstlisting}[language=Java]
 stream
@@ -57,7 +56,5 @@ stream
 
 Note that streams are already partitioned on a key before windowing, so the above is a \textit{local operator} that does not require coordination between machines. This mechanism can be used to implement a wide variety of windowing functionality \cite{akidau2015dataflow}. 
 
-
-
-
-
+\subsection{Asynchronous Streaming Iterations}
+Stream loops are crucial for several applications. Common examples are feedback loops for incrementally building and training machine learning models, reinforcement learning, and executing graph algorithms. Flink supports loops through explicit feedback edges in its dataflow graph, allowing to implement asynchronous iterative/incremental algorihtms. In Flink, feedback streams have special semantics and are treated in a way that is transparent to its scheduler: feedback streams do not act as dependencies in the dataflow graph, allowing Flink to employ simple DAG scheduling techniques while the contents of feedback streams are treated as operator state, in order to simplify fault tolerance \cite{carbone2015lightweight}. Flink allows constructing loops on top of its DataStream API, and can trivially subsume structured loops such as differential dataflows \cite{murray2013naiad}. \autoref{sec:batch-iterations} describes iterations support for batch analytics.
