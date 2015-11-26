@@ -19,22 +19,23 @@ The stateful operators (which may be stateless as a special case) implement all 
 \begin{figure}[t!]
 \begin{minipage}{1.1\linewidth}
       \centering
-       \hspace{-0.05\linewidth}
-      \begin{minipage}{0.60\linewidth}
+       \hspace{-0.1\linewidth}
+      \begin{minipage}{0.55\linewidth}
         \begin{figure}[H]
         \centering
         \includegraphics[width=.999\textwidth]{figs/dataflow}
         \vspace{-3mm}
-        \caption{A simple dataflow graph comprising stateful operators (sources, sinks and operators), and intermediate streams (transient and materialized).}
+        \caption{A simple dataflow graph.}
         \label{fig:dataflow}
         \end{figure}
       \end{minipage}
-      % \hspace{0.05\linewidth}
-      \begin{minipage}{0.4\linewidth}
+      \hspace{0.03\linewidth}
+      % \vspace{-3mm}
+      \begin{minipage}{0.32\linewidth}
           \begin{figure}[H]
 				\includegraphics[width=.95\textwidth]{figs/latency-throughput.pdf}
-				\vspace{-3mm}
-    			\caption{Latency vs. Throughput.}
+				\vspace{-1mm}
+    			\caption{The effect of buffer-timeout in latency and throughput.}
     			\label{fig:latency-throughput}
           \end{figure}
       \end{minipage}
@@ -55,7 +56,7 @@ Flink's intermediate data streams are the core abstraction for data exchange bet
 
 \para{Pipelined and Blocking Data Exchange.} \emph{Pipelined streams} exchange data between concurrently running producers and consumers resulting in pipelined execution. Synchronous streams propagate back pressure from consumer to producer (modulo some elasticity via intermediate buffer pools, in order to compensate for short-term throughput fluctuations). Flink uses these streams for continuous streaming programs, as well as for many parts of batch dataflows, in order to avoid materialization when possible. \emph{Blocking streams}, on the other hand, are applicable to bounded data streams. The decoupled stream buffers all of the producing operator's data before making it available for consumption, thereby separating the producing and consuming operators into different execution stages. Blocking streams naturally require more memory, frequently spill to secondary storage, and do not propagate backpressure. They are used to isolate successive operators against each other (where desired) and in situations where plans with pipeline-breaking operators such as joins, can cause distributed deadlocks.
 
-\para{Balancing Latency and Throughput.} Flink’s data exchange mechanisms are implemented around the exchange of buffers. When a data record is ready on the producer side, it is serialized and stored into one or more buffers that can be forwarded to consumers. A buffer in Flink is sent to a consumer either i) as soon as it is full, or ii) when a timeout condition is reached. This enables Flink to achieve, high throughput by setting the size of buffers to a high value, e.g., a few kilobytes, as well as low latency by setting the buffer timeout to a low value e.g., a few milliseconds.
+\para{Balancing Latency and Throughput.} Flink’s data exchange mechanisms are implemented around the exchange of buffers. When a data record is ready on the producer side, it is serialized and stored into one or more buffers that can be forwarded to consumers. A buffer in Flink is sent to a consumer either i) as soon as it is full, or ii) when a timeout condition is reached. This enables Flink to achieve, high throughput by setting the size of buffers to a high value, e.g., a few kilobytes, as well as low latency by setting the buffer timeout to a low value e.g., a few milliseconds. For instance, \autoref{fig:latency-throughput} shows the effect of 
 
 \para{Control Events.} Apart from exchanging data, streams in Flink communicate different types of control events. These are special events injected in the data stream by producing operators and are delivered in-order along with all other data records and events within a stream partition. The receiving operators react to these events by performing certain actions upon their arrival. Flink uses special types of control events such as: \vspace{-2mm}
 \begin{itemize}
