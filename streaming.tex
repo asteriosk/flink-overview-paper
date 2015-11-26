@@ -18,12 +18,11 @@ Flink programs that are based on processing time, rely on the machine clocks, an
 
 
 \subsection{Stateful Stream Processing}
-While most operators in Flink’s DataStream API look like functional, side-effect free operators, they also support efficient stateful computations. State is critical to many applications such as machine learning model building, graph analysis, user session handling and window aggregations among others. There is a plethora of different types of states depending on the use case. For example, the state can be something as simple as a counter or a sum, or more complex, such as a classification tree or a large sparse matrix often used in machine learning applications. Stream windows can also be modelled, in principle, by stateful operators which assign records to continuously updated buckets kept in memory as part of an operator state. 
+While most operators in Flink’s DataStream API look like functional, side-effect free operators, they provide support for efficient stateful computations. State is critical to many applications such as machine learning model building, graph analysis, user session handling and window aggregations. There is a plethora of different types of states depending on the use case. For example, the state can be something as simple as a counter or a sum, or more complex, such as a classification tree or a large sparse matrix often used in machine learning applications. Stream windows can also be modelled, in principle, by stateful operators which assign records to continuously updated buckets kept in memory as part of the operator state. 
 
-In Apache Flink, state is made explicit, to cover all different use cases, and incorporated in the API by providing: $i)$ Operator interfaces or annotations to statically register explicit local variables within the scope of an operation;  $ii)$ an OperatorState abstraction for marking partitioned key-value states and the associated operations. Users can also configure how the state is stored and checkpointed using the StateBackend abstractions provided by the system allowing very flexible custom state management in the streaming applications. Flink’s checkpointing mechanism guarantees that any registered state is durably accessed with exactly-once update semantics. 
+To cover a lot of different use cases, in Flink state is made explicit and is incorporated in the API by providing: $i)$ Operator interfaces or annotations to statically register explicit local variables within the scope of an operator;  $ii)$ an OperatorState abstraction for marking partitioned key-value states and the associated operations. Users can also configure how the state is stored and checkpointed using the StateBackend abstractions provided by the system, allowing very flexible custom state management in the streaming applications. Flink’s checkpointing mechanism (\autoref{sec:fault-tolerance}) guarantees that any registered state is durable with exactly-once update semantics. 
 
 As a simple example consider a map operator that computes a continuous average for a given stocks price. For this we need to keep a state with the current count and total sum for each stock in order to compute the average:
-
 
 \begin{lstlisting}[language=Scala]
 val priceStream: DataStream[(String,Double)] = ...
@@ -37,9 +36,9 @@ val avgPerStock : DataStream[(String, Double)] = source.keyBy(0).mapWithState(
 \end{lstlisting}
 
 \subsection{Stream Windows}
-Many incremental computations over unbounded streams are often evaluated over continously evolving logical views, called windows. Apache Flink incorporates windowing within a stateful operator which is configured via a flexible declaration composed out of three core functions: a window assigner and optionally a trigger and an evictor. All three functions can be selected among a pool of common predefined implementations (e.g. sliding time window) or explicitly defined by the user (via UDFs).
+Incremental computations over unbounded streams are often evaluated over continously evolving logical views, called windows. Apache Flink incorporates windowing within a stateful operator which is configured via a flexible declaration composed out of three core functions: a window \textit{assigner} and optionally a \textit{trigger} and an \textit{evictor}. All three functions can be selected among a pool of common predefined implementations (e.g. sliding time windows) or can be explicitly defined by the user as UDFs.
 
-More specifically, the assigner is responsible for assigning each record to logical windows. For example, this decision can be based on the timestamp of a record when it comes to event-time windows. Note that in the case of sliding windows, an element can belong to multiple logical windows. An optional trigger defines when the operation associated with the window definition is performed. Finally, an optional evictor determines which records to retain within each window. The window assignment process of Apache Flink is uniquely capable of covering all known window types such as periodic time/count-windows, punctuation, landmark, session and delta windows. Note that windows incorporate out-of-order processing seamlessly as in \cite{li2005semantics, akidau2015dataflow} and, in principle, subsumes these windowing models. For example, below is a window definition of 6 seconds that slides every 2 seconds (Assigner). The window results are computed once the watermark passes the end of the window (Trigger).
+More specifically, the assigner is responsible for assigning each record to logical windows. For example, this decision can be based on the timestamp of a record when it comes to event-time windows. Note that in the case of sliding windows, an element can belong to multiple logical windows. An optional trigger defines when the operation associated with the window definition is performed. Finally, an optional evictor determines which records to retain within each window. Flink's window assignment process is uniquely capable of covering all known window types such as periodic time/count-windows, punctuation, landmark, session and delta windows. Note that Flink's windowing capabilities incorporate out-of-order processing seamlessly as in \cite{li2005semantics, akidau2015dataflow} and, in principle, subsume these windowing models. For example, below is a window definition of 6 seconds that slides every 2 seconds (Assigner). The window results are computed once the watermark passes the end of the window (Trigger).
 
 \begin{lstlisting}[language=Java]
 stream
@@ -56,7 +55,7 @@ stream
   .evict(Count.of(100))
 \end{lstlisting}
 
-Note that streams are already partitioned on a key before windowing, so the above is a local operator that does not require coordination between machines. This mechanism can be used to implement a wide variety of windowing functionality \cite{akidau2015dataflow}. 
+Note that streams are already partitioned on a key before windowing, so the above is a \textit{local operator} that does not require coordination between machines. This mechanism can be used to implement a wide variety of windowing functionality \cite{akidau2015dataflow}. 
 
 
 

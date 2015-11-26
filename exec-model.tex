@@ -31,16 +31,14 @@ Flink's intermediate data streams are the core abstraction for data exchange bet
 
 \para{Balancing Latency and Throughput.} Flink’s data exchange mechanisms are implemented around the exchange of buffers. When a data record is ready on the producer side, it is serialized and stored into one or more buffers that can be forwarded to consumers. A buffer in Flink is sent to a consumer either i) as soon as it is full, or ii) when a timeout condition is reached. This enables Flink to achieve, high throughput by setting the size of buffers to a high value, e.g., a few kilobytes, as well as low latency by setting the buffer timeout to a low value e.g., a few milliseconds.
 
-\noindent \TODO{Do we need the one below? We will need more context if we decide to keep this here. Maybe move to streams?}
-
-\para{Ordering Guarantees.} Data exchange of one stream partition preserves the order of records. As a consequence, chains of operators that consume one stream partition maintain order of records. Operators receiving more than one stream partition merge the streams as records arrive, to minimize back pressure. As a consequence, the streaming dataflow gives no ordering guarantees for records after any form of repartitioning or broadcasting. The responsibility to deal with out-of-order records is delegated to the operator implementation. We found that this gives the most efficient design, as most operators do not require deterministic order, and operators that need to compensate for out-of-order arrivals (such as event time windows) can do that efficiently.
-
-\para{Control Events.} Apart from exchanging data, streams in Flink communicate different types of control events. These are special events injected in the data stream by producing operators and are delivered in-order along with all other data records and events within a stream partition. The receiving operators react to these events by performing certain actions upon their arrival. Flink uses control records in multiple mechanisms, such as: \vspace{-2mm}
+\para{Control Events.} Apart from exchanging data, streams in Flink communicate different types of control events. These are special events injected in the data stream by producing operators and are delivered in-order along with all other data records and events within a stream partition. The receiving operators react to these events by performing certain actions upon their arrival. Flink uses special types of control events such as: \vspace{-2mm}
 \begin{itemize}
-\item Signaling the progress of event time within a stream partition (\autoref{sec:streaming-time}). \vspace{-3mm}
-\item Coordinating checkpoints, dividing the stream into pre-checkpoint and post-checkpoint (\autoref{sec:fault-tolerance}). \vspace{-3mm}
-\item Signaling that a stream partition has reached the end of a superstep, in Bulk/Stale-Synchronous-Parallel iterative algorithms on top of cyclic dataflows (\autoref{sec:batch-iterations}). \vspace{-3mm}
+\item \textit{Checkpoint barriers} that coordinate checkpoints by dividing the stream into pre-checkpoint and post-checkpoint (\autoref{sec:fault-tolerance}). \vspace{-3mm}
+\item \textit{Watermarks} signaling the progress of event time within a stream partition (\autoref{sec:streaming-time}). \vspace{-3mm}
+\item \textit{Iteration barriers} signaling that a stream partition has reached the end of a superstep, in Bulk/Stale-Synchronous-Parallel iterative algorithms on top of cyclic dataflows (\autoref{sec:batch-iterations}). \vspace{-1mm}
 \end{itemize}
+
+Control events assume that a stream partition preserves the order of records. To this end, unary operators in Flink consuming a single stream partition, \emph{guarantee a FIFO order of records}. However, operators receiving more than one stream partition merge the streams as records arrive, in order to keep up with the streams' rate and avoid back pressure. As a result, streaming dataflows in Flink do not provide ordering guarantees after any form of repartitioning or broadcasting, and the responsibility of dealing with out-of-order records is left to the operator implementation. We found that this gives the most efficient design, as most operators do not require deterministic order (e.g., hash-joins, maps, etc.), and operators that need to compensate for out-of-order arrivals (such as event time windows) can do that more efficiently as part of the operator logic.
 
 \subsection{Iterative Dataflows}
 \TODO{Should we have a few sentences here? Would describe that cyclic flows enable iterative processing as BSP/SSP in batch [iterations paper, euranova SSP on Flink paper] and simply for streaming programs with feedback. @Stephan, could you make a start here? Just to see how you would like to see it.}
@@ -54,8 +52,10 @@ Flink offers reliable execution with strict exactly-once-processing consistency 
 
 The checkpointing mechanism of Apache Flink builds on the notion of distributed consistent snapshots/checkpoints to achieve exactly-once-processing guarantees. The possibly unbounded nature of a data stream makes re-computation upon recovery impractical, as possibly months of computation will need to be replayed considering a long running job. To bound recovery time, Flink takes a snapshot of the state of operators, including the current position of the input streams at regular intervals.
 
+The core challenge lies in taking a consistent snapshot of all parallel operators without halting the execution of the topology. In essence, the snapshot of all operators should refer to the same logical time in the computation. The mechanism used in Flink is called Asynchronous Barrier Snapshotting, or ABS \cite{carbone2015lightweight}. Barriers are control records injected into the input streams that correspond to a logical time, and logically separate the stream to the part whose effects will be included in the current snapshot, and the part that will be snapshotted later.
+
 \begin{figure}[t!]
-	\centering  	
+	\centering
   	\includegraphics[width=.75\textwidth]{figs/snaps.pdf}
   	\vspace{-6mm}
 	\caption{Asynchronous Barrier Snapshotting.}
@@ -63,11 +63,10 @@ The checkpointing mechanism of Apache Flink builds on the notion of distributed 
 	\label{fig:snapshots}
 \end{figure}
 
-The core challenge lies in taking a consistent snapshot of all parallel operators without halting the execution of the topology. In essence, the snapshot of all operators should refer to the same logical time in the computation. The mechanism used in Flink is called Asynchronous Barrier Snapshotting, or ABS \cite{carbone2015lightweight}. Barriers are control records injected into the input streams that correspond to a logical time, and logically separate the stream to the part whose effects will be included in the current snapshot, and the part that will be snapshotted later.
-
 An operator receives barriers from upstream and first performs an alignment phase, making sure that the barriers from all inputs have been received. Then, the operator writes its state (e.g., contents of a sliding window, or custom data structures) to durable storage (the storage backend can be an external system, e.g., HDFS). Once the state has been backed up, the operator forwards the barrier downstream. ABS bears resemblances to the seminal Chandy-Lamport algorithm for asynchronous distributed snapshots \cite{chandy1985distributed}. However, because of the DAG structure of a Flink program, ABS does not need to checkpoint in-flight records but solely rely on the aligning phase to apply all their effects to the operator states. This guarantees that the data that needs to be written to reliable storage is kept to the theoretical minimum (i.e., only the current state of the operators).
 
 Recovery from failures reverts all operator states to their respective states taken from the last successful snapshot, and restarts the input streams starting from the latest barrier. The maximum amount of re-computation needed upon recovery is limited to the amount of input records between two consecutive barriers. Furthermore,  we note that this strategy does not eliminate the possibility for partial recovery, when upstream backup is applied.
+
 \vspace{1mm}
 \noindent ABS provides several benefits:\vspace{-3mm}
 \begin{itemize}
@@ -75,41 +74,6 @@ Recovery from failures reverts all operator states to their respective states ta
 \item It is completely decoupled other forms of control messages, e.g., by events that trigger the computation of windows, thus not restricting the windowing mechanism to multiples of the checkpoint interval. \vspace{-3mm}
 \item It is completely decoupled from the mechanism used for reliable storage, allowing state to be backed up to file systems, databases, etc, depending on the larger environment in which Flink is used.
 \end{itemize}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 % \para{The Job Graph.} Flink's execution model is based on the Job Graph, a directed acyclic graph (DAG) that consists of nodes and edges. There are two classes of nodes: (stateful) operators, and (logical) intermediate results (IRs) as presented on Figure \autoref{fig:JobGraph}. For example, the aforementioned graph consists of five operators (circles), and three intermediate results (cylinders). Operators abstract computation (e.g., transformations, joins, etc), state (e.g., a persistent counter), as well as data sources (e.g. reading data from a file system, a socket, a message queue, etc.), and data sinks. Operators produce intermediate results, as well as updates to state. An intermediate result is a logical handle (pointer) to the data that is produced by one operator. An intermediate result can be consumed by one or more operators. Intermediate results are logical in the sense that the data they point to may or may not be materialized on disk. When the JobGraph is scheduled in a cluster for execution, it is parallelized to form an ExecutionGraph that consists of tasks (parallel instances of operators), and intermediate result partitions (IRPs).
 
