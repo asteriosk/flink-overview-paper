@@ -56,7 +56,7 @@ stream
 
 Note that if the stream above is partitioned on a key before  windowing, the window operation above is \textit{local} and thus, it does not require coordination between machines. This mechanism can be used to implement a wide variety of windowing functionality \cite{akidau2015dataflow}. 
 
-\subsection{Asynchronous Streaming Iterations}
+\subsection{Asynchronous Stream Iterations}
 Stream loops are essential for several applications. Common examples are feedback loops for incrementally building and training machine learning models, reinforcement learning and graph algorithms in the semi-streaming model \cite{feigenbaum2005graph}.
 In most such cases, feedback loops need no coordination. Asynchronous iterations cover the communication needs for streaming applications and differ from parallel optimisation problems that are based on structured iterations on finite data. As presented, in \autoref{sec:iterations} and \autoref{fig:iterations} the execution model of Apache Flink already covers asynchronous iterations, when no iteration control mechanism is enabled. In addition, to comply with fault-tolerance guarantees feedback streams are treated as operator state within the implicit iteration head operator and are part of a global snapshot, as explained in detail in \cite{carbone2015lightweight}. The DataStream API allows for an explicit definition of feedback streams and can trivially subsume future support for structured loops over streams such as differential dataflows \cite{murray2013naiad}.
 
