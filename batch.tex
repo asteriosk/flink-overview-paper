@@ -15,12 +15,8 @@ A bounded data set is a special case of an unbounded data stream. Thus, a stream
 	\item A query optimization layer transforms a DataSet program to an efficient executable.\vspace{-3mm}
 \end{itemize}
 
-
-
 \subsection{Query Optimization} 
-
 Flink’s optimizer builds on techniques from parallel database systems such as plan equivalence, cost modeling and interesting property propagation. However, the arbitrary UDF-heavy DAGs that make up Flink’s dataflow programs do not allow a traditional optimizer to employ database techniques out of the box \cite{blackBoxes}, since the operators hide their semantics from the optimizer. For the same reason, cardinality and cost estimation methods are equally difficult to employ. Flink’s runtime supports various execution strategies including repartition/broadcast data transfer, as well as sort-based grouping and sort- and hash-based join implementations. Flink’s optimizer enumerates different physical plans based on the concept of interesting properties propagation \cite{scopeOptimizer}, using a cost-based approach to choose among multiple physical plans. The cost includes network/disk I/O and CPU cost. To overcome the cardinality estimation issues that were mentioned earlier,  Flink’s optimizer uses hints that are provided by the programmer.
-
 
 \subsection{Memory Management} Building on database technology, Flink, instead of allocating objects in the JVM’s heap to represent buffered in-flight data records, serializes data into a  memory segments. Operations such as sorting and joining operate as much as possible on the binary data directly, keeping the de/serialization overhead at a minimum and partially spilling data to disk when needed. To handle arbitrary objects, Flink uses type inference, and  custom serialization mechanisms.  By keeping the data processing on binary representation and off-heap, Flink manages to reduce the garbage collection overhead, and use cache-efficient and robust algorithms [Graefe join paper] that scale gracefully under memory pressure.
 
