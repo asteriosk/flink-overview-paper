@@ -66,9 +66,9 @@
 
 \title{Apache Flink\texttrademark: Stream and Batch Processing in a Single Engine}
 
-\author{Paris Carbone\textsuperscript{1} \\ Asterios Katsifodimos\textsuperscript{3} \\\\ \small{ \textsf{\small \textsuperscript{1}KTH \& SICS Sweden}} \\ \small \href{parisc,haridi@kth.se}{parisc,haridi@kth.se}
-\and Stefan Ewen\textsuperscript{2} \\ Volker Markl\textsuperscript{3} \\\\ \small \textsf{\textsuperscript{2}Data Artisans GmbH} \\ \small \href{first@data-artisans.de}{first@data-artisans.de}
-\and Seif Haridi\textsuperscript{1} \\ Kostas Tzoumas\textsuperscript{2} \\\\ \small \textsf{\textsuperscript{3}TU Berlin} \\ \small \href{fist.last@tu-berlin.de}{first.last@tu-berlin.de}
+\author{Paris Carbone\textsuperscript{$\dagger$} \\ Asterios Katsifodimos\textsuperscript{*} \\\\ \small{ \textsf{\small \textsuperscript{$\dagger$}KTH \& SICS Sweden}} \\ \small \href{parisc,haridi@kth.se}{parisc,haridi@kth.se}
+\and Stephan Ewen\textsuperscript{$\ddagger$} \\ Volker Markl\textsuperscript{*} \\\\ \small \textsf{\textsuperscript{$\ddagger$}Data Artisans GmbH} \\ \small \href{first@data-artisans.de}{first@data-artisans.de}
+\and Seif Haridi\textsuperscript{$\dagger$} \\ Kostas Tzoumas\textsuperscript{$\ddagger$} \\\\ \small \textsf{\textsuperscript{*}TU Berlin} \\ \small \href{fist.last@tu-berlin.de}{first.last@tu-berlin.de}
 %
 \vspace{-5mm}
 }
@@ -80,7 +80,7 @@
 \maketitle
 
 \begin{abstract}
-Apache Flink \footnote{The authors of this paper make no claim in being the sole inventors or implementers of the ideas behind Apache Flink that are presented, but rather a group of people that attempt to accurately document these concepts and their significance in writing. For a complete list see \autoref{sec:acknowledgements}} is an open-source system for processing streaming and batch data. Flink is built on the philosophy that many classes of data processing applications, including real-time analytics, continuous data pipelines, historic data processing (batch), and iterative algorithms (machine learning, graph analysis) can be expressed and executed as pipelined fault-tolerant dataflows. In this paper, we present Flink's architecture and expand on how a (seemingly diverse) set of use cases can be unified under the same execution model.
+Apache Flink \footnote{The authors of this paper make no claim in being the sole inventors or implementers of the ideas behind Apache Flink, but rather a group of people that attempt to accurately document these concepts and their significance. Consult \autoref{sec:acknowledgements} for acknowledgements.} is an open-source system for processing streaming and batch data. Flink is built on the philosophy that many classes of data processing applications, including real-time analytics, continuous data pipelines, historic data processing (batch), and iterative algorithms (machine learning, graph analysis) can be expressed and executed as pipelined fault-tolerant dataflows. In this paper, we present Flink's architecture and expand on how a (seemingly diverse) set of use cases can be unified under the same execution model.
 \end{abstract}
 
 %!TEX root = paper.tex
@@ -88,7 +88,7 @@ Apache Flink \footnote{The authors of this paper make no claim in being the sole
 
 \section{Introduction}
 \label{sec:intro}
-Data-stream processing (e.g, as exemplified by Complex Event Processing systems) and static (batch) data processing (e.g., as exemplified by MPP databases and Hadoop ) were traditionally considered as two very different types of applications. They were programmed using different programming models and APIs, and were executed by different systems (e.g., dedicated streaming systems such as  Apache Storm, IBM Infosphere Streams, Microsoft StreamInsight, or Streambase versus relational databases or execution engines for Hadoop, including Apache Spark, and Apache Drill). Traditionally, batch data analysis made up for the lion's share of the use cases, data sizes, and market, while streaming data analysis mostly served specialized applications.
+Data-stream processing (e.g, as exemplified by Complex Event Processing systems) and static (batch) data processing (e.g., as exemplified by MPP databases and Hadoop) were traditionally considered as two very different types of applications. They were programmed using different programming models and APIs, and were executed by different systems (e.g., dedicated streaming systems such as  Apache Storm, IBM Infosphere Streams, Microsoft StreamInsight, or Streambase versus relational databases or execution engines for Hadoop, including Apache Spark, and Apache Drill). Traditionally, batch data analysis made up for the lion's share of the use cases, data sizes, and market, while streaming data analysis mostly served specialized applications.
 
 It is becoming more and more apparent, however, that a huge number of today's large-scale data processing use cases handle data that is, in reality, continuously produced over time. These continuous streams of data come for example from web logs, application logs, sensors, or as changes to application state in databases (transaction log records). Rather than treating the streams as streams, today's setups ignore the continuous and timely nature of data production. Instead, data records are (often artificially) batched into static data sets (for example hourly, daily, or monthly chunks) and then processed in a time-agnostic fashion. Data collection tools, workflow managers, and schedulers orchestrate the creation and processing of batches, in what is actually a continuous data processing pipeline. Architectural patterns such as the "lambda architecture" \cite{marz2015big} combine batch and stream processing systems to implement multiple paths of computation: a streaming fast path for timely approximate results, and a batch offline path for late accurate results. All these approaches suffer from high latency (imposed by batches), high complexity (connecting and orchestrating several systems, and implementing business logic twice), as well as arbitrary inaccuracy, as the time dimension is not explicitly handled by the application code.
 
