@@ -80,7 +80,7 @@
 \maketitle
 
 \begin{abstract}
-Apache Flink is an open-source system for processing streaming and batch data. Flink is built on the philosophy that many classes of data processing applications, including real-time analytics, continuous data pipelines, historic data processing (batch), and iterative algorithms (machine learning, graph analysis) can be expressed and executed as pipelined fault-tolerant dataflows. In this paper, we present Flink's architecture and expand on how a (seemingly diverse) set of use cases can be unified under the same execution model.
+Apache Flink \footnote{The authors of this paper make no claim in being the sole inventors or implementers of the ideas behind Apache Flink that are presented, but rather a group of people that attempt to accurately document these concepts and their significance in writing. For a complete list see \autoref{sec:acknowledgements}} is an open-source system for processing streaming and batch data. Flink is built on the philosophy that many classes of data processing applications, including real-time analytics, continuous data pipelines, historic data processing (batch), and iterative algorithms (machine learning, graph analysis) can be expressed and executed as pipelined fault-tolerant dataflows. In this paper, we present Flink's architecture and expand on how a (seemingly diverse) set of use cases can be unified under the same execution model.
 \end{abstract}
 
 %!TEX root = paper.tex
@@ -355,6 +355,11 @@ Flink's optimizer builds on techniques from parallel database systems such as pl
 \label{sec:batch-iterations}
 Iterative graph analytics, parallel gradient descent and optimisation techniques have been implemented in the past on top of Bulk Synchronous Parallel (BSP) and Stale Synchronous Parallel (SSP) models, among others. Flink's execution model allows for any type of structured iteration logic to be implemented on top, by using iteration-control events. For instance, in the case of a BSP execution, iteration-control events mark the beginning and the end of supersteps in an iterative computation. Finally, Flink introduces further novel optimisation techniques such as the concept of \emph{delta} iterations \cite{DBLP:journals/pvldb/EwenTKM12}, which can exploit sparse computational dependencies (already part of Gelly, Flink's Graph API).  
 
+\vspace{-4mm}
+\section{Acknowledgements}
+\vspace{-2mm}
+\label{sec:acknowledgements}
+The development of the Apache Flink project is overseen by a self-selected team of active contributors to the project. A Project Management Committee (PMC) guides the project's ongoing operations, including community development and product releases. At the current time of writing this, the list of Flink committers (excluding any affiliated authors) are : M\'arton Balassi, Ufuk Celebi, Gyula F\'ora, Alan Gates, Fabian Hueske, Vasia Kalavri, Aljoscha Krettek, Andra Lungu, Robert Metzger, Maximilian Michels, Chiwan Park, Till Rohrmann, Henry Saputra, Matthias J. Sax, Sebastian Schelter, Timo Walther, Daniel Warneke, ChengXiang Li, and Greg Hogan. In addition to these individuals, we want to acknowledge the broader Flink community of more than 180 contributors. 
 
 %!TEX root = paper.tex
 \vspace{-4mm}
@@ -388,7 +393,6 @@ More recent approaches in data streaming enable horizontal scalability and compo
 \section{Conclusion}
 \label{sec:conclusions}
 In this paper we presented Apache Flink, a platform that implements a universal dataflow engine designed to perform both stream and batch analytics. Flink's dataflow engine treats operator state and logical intermediate results as first-class citizens, and is used by both the batch and a data stream APIs, with different parameters. The streaming API that is built on top of  Flink's streaming dataflow engine provides the means to keep recoverable state and to partition, transform, and aggregate windows of a data stream. While batch computations are, in theory, a special case of a streaming computations, Flink treats them specially, by optimizing their execution with a novel query optimizer, and by implementing blocking operators that gracefully spill to disk in the absence of memory. 
-
 
 {
 \small
