@@ -214,7 +214,7 @@ As mentioned above, control events assume that a stream partition preserves the 
 \subsection{Fault Tolerance}
 \label{sec:fault-tolerance}
 
-Flink offers reliable execution with strict exactly-once-processing consistency guarantees and deals with failures via checkpointing and partial re-execution. The general assumption the system makes to effectively provide these guarantees is that the data sources are persistent and replayable. Examples of such sources are files and durable message queues (e.g. Apache Kafka). In practice, non-persistent sources can also be incorporated by keeping a look-ahead log within the state of the source operators.
+Flink offers reliable execution with strict exactly-once-processing consistency guarantees and deals with failures via checkpointing and partial re-execution. The general assumption the system makes to effectively provide these guarantees is that the data sources are persistent and replayable. Examples of such sources are files and durable message queues (e.g. Apache Kafka). In practice, non-persistent sources can also be incorporated by keeping a write-ahead log within the state of the source operators.
 
 The checkpointing mechanism of Apache Flink builds on the notion of distributed consistent snapshots to achieve exactly-once-processing guarantees. The possibly unbounded nature of a data stream makes re-computation upon recovery impractical, as possibly months of computation will need to be replayed for a long-running job. To bound recovery time, Flink takes a snapshot of the state of operators, including the current position of the input streams, at regular intervals.
 
@@ -363,23 +363,24 @@ Iterative graph analytics, parallel gradient descent and optimisation techniques
 \label{sec:related}
 There is, by now, a wealth of engines for distributed batch and stream analytical processing. We categorise these systems below. 
 
-\para{Batch Processing.} Apache Hadoop is the most popular open-source system for large-scale data analysis that is based on the MapReduce paradigm~\cite{DBLP:journals/cacm/DeanG08}. Dryad~\cite{isard2007dryad} introduced embedded user-defined functions in general DAG-based dataflows and was used by SCOPE~\cite{scopeOptimizer}, which added a language and an SQL optimizer on top of it. Apache Tez~\cite{saha2015apache} can be seen as an open source implementation of the ideas proposed in Dryad. MPP databases \cite{dewitt1990gamma}, and recent open-source implementations like Apache Drill and Impala \cite{kornacker2015impala}, restrict their API to SQL variants. Similar to Flink, Apache Spark \cite{DBLP:conf/hotcloud/ZahariaCFSS10} is a data-processing framework that implements a DAG-based execution engine, provides an SQL optimizer, performs driver-based iterations, and treats stream computations as micro-batches. In contrast, Flink is the only system that 
+\para{Batch Processing.} Apache Hadoop is the most popular open-source system for large-scale data analysis that is based on the MapReduce paradigm~\cite{DBLP:journals/cacm/DeanG08}. Dryad~\cite{isard2007dryad} introduced embedded user-defined functions in general DAG-based dataflows and was used by SCOPE~\cite{scopeOptimizer}, which added a language and an SQL optimizer on top of it. Apache Tez~\cite{saha2015apache} can be seen as an open source implementation of the ideas proposed in Dryad. MPP databases \cite{dewitt1990gamma}, and recent open-source implementations like Apache Drill and Impala \cite{kornacker2015impala}, restrict their API to SQL variants. Similar to Flink, Apache Spark \cite{DBLP:conf/hotcloud/ZahariaCFSS10} is a data-processing framework that implements a DAG-based execution engine, provides an SQL optimizer, performs driver-based iterations, and treats stream computations as micro-batches. In contrast, Flink is the only system that incorporates
 \begin{inparaenum}[i)]
-  \item supports an optimizer that can optimize DAG programs beyond SQL queries,
-  \item is able to perform very efficient iterative processing natively,
-  \item includes stream processing as a first-class citizen, enabling more complex use cases than micro-batches.
+  \item a distributed dataflow runtime that exploits pipelined streaming execution for batch and stream workloads,
+  \item exactly-once state consistency through lightweight checkpointing,
+  \item efficient, native iterative processing,
+  \item sophisticated window semantics, supporting out-of-order processing.
 \end{inparaenum}
 
-\para{Stream Processing.} There is a wealth of work on streaming systems, that includes commercial systems, such as StreamBase, Microsoft StreamInsight, and IBM InfoSphere Streams. Many of these systems are based on research in the database community in projects such as PSoup/Telegraph \cite{chandrasekaran2003psoup}, Aurora/Borealis~\cite{abadi2005design}, Stanford STREAM~\cite{arasu2004stream}, Trill~\cite{chandramouli2014trill} and IBM System S~\cite{gedik2008spade}. Most of the above systems are either
+\para{Stream Processing.} There is a wealth of prior work on academic and commercial stream processing systems, such as SEEP, StreamBase, Microsoft StreamInsight, and IBM InfoSphere Streams. Many of these systems are based on research in the database community \cite{chandrasekaran2003psoup,abadi2005design,arasu2004stream,chandramouli2014trill,gedik2008spade,migliavacca2010seep}. Most of the above systems are either
 \begin{inparaenum}[i)]
   \item academic prototypes,
   \item closed-source commercial products, or 
   \item do not scale the computation horizontally on clusters of commodity servers.
 \end{inparaenum}
-Newer open source streaming systems that scale horizontally, such as Apache Storm and Apache Samza, provide low level APIs and offer only at-least-once and at-most-once guarantees. MillWheel~\cite{akidau2013millwheel}, a closed-source system at Google provides exactly-once guarantees with low latency and is used by Google Dataflow~\cite{akidau2015dataflow} to implement  out-of-order stream analytics. To the best of our knowledge, Flink is the only open-source project that
+More recent approaches in data streaming enable horizontal scalability and compositional dataflow operators with some state consistency guarantees (e.g. at-least-once processing in Apache Storm and Samza). Notably, concepts such as ``out of order processing'' (OOP \cite{li2008out}) gained significant attraction and were adopted by Google's MillWheel~\cite{akidau2013millwheel} a preliminary version of the current cloud executor of Apache Beam/Google Dataflow~\cite{akidau2015dataflow}. Millwheel served as a proof of concept for exactly-once low latency stream processing and OOP, thus, being very influential to the evolution of Flink. To the best of our knowledge, Flink is the only open-source project that:
 \begin{inparaenum}[i)]
   \item offers high level APIs and processing libraries,
-  \item provides state management with exactly-once guarantees and
+  \item provides consistent managed state with exactly-once guarantees and
   \item achieves high throughput and low latency, serving both batch and true streaming computations equally well.
 \end{inparaenum}
 
