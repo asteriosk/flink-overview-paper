@@ -47,6 +47,18 @@
     },emphstyle={\color{blue}\textbf}%
 }%
 
+
+\usepackage[
+backend=biber
+% style=alphabetic,
+% sorting=abbrv
+]{biblatex}
+
+\renewbibmacro{in:}{}
+ 
+\addbibresource{references.bib}
+\renewcommand{\bibfont}{\small} % or any other  appropriate font command
+
 % url references
 \usepackage[hidelinks]{hyperref}
 
@@ -394,11 +406,11 @@ More recent approaches in data streaming enable horizontal scalability and compo
 \label{sec:conclusions}
 In this paper we presented Apache Flink, a platform that implements a universal dataflow engine designed to perform both stream and batch analytics. Flink's dataflow engine treats operator state and logical intermediate results as first-class citizens, and is used by both the batch and a data stream APIs, with different parameters. The streaming API that is built on top of  Flink's streaming dataflow engine provides the means to keep recoverable state and to partition, transform, and aggregate windows of a data stream. While batch computations are, in theory, a special case of a streaming computations, Flink treats them specially, by optimizing their execution with a novel query optimizer, and by implementing blocking operators that gracefully spill to disk in the absence of memory. 
 
-{
-\small
-\bibliographystyle{abbrv}
-\bibliography{references}
-}
-
+% {
+% \small
+% \bibliographystyle{abbrv}
+% \bibliography{references}
+% }
+\printbibliography
 
 \end{document}
