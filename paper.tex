@@ -16,8 +16,6 @@
 
 \graphicspath{{figs/}}
 
-
-
 \newcommand{\TODO}[1]{\textcolor{red}{TODO: #1}}
 \newcommand{\sectionautorefname}{Section}%
 \newcommand{\para}[1]{\vspace{2mm}\noindent\textbf{#1}}
@@ -89,14 +87,12 @@
 \vspace{-5mm}
 }
 
-
-
 %\and Stefan Ewen$^2$ \and Seif Haridi$^1$ \and Asterios Katsifodimos$^3$ \and Volker Markl$^3$ \and Kostas Tzoumas$^2$}
 
 \maketitle
 
 \begin{abstract}
-Apache Flink \footnote{The authors of this paper make no claim in being the sole inventors or implementers of the ideas behind Apache Flink, but rather a group of people that attempt to accurately document these concepts and their significance. Consult \autoref{sec:acknowledgements} for acknowledgements.} is an open-source system for processing streaming and batch data. Flink is built on the philosophy that many classes of data processing applications, including real-time analytics, continuous data pipelines, historic data processing (batch), and iterative algorithms (machine learning, graph analysis) can be expressed and executed as pipelined fault-tolerant dataflows. In this paper, we present Flink's architecture and expand on how a (seemingly diverse) set of use cases can be unified under a single execution model.
+Apache Flink\footnote{The authors of this paper make no claim in being the sole inventors or implementers of the ideas behind Apache Flink, but rather a group of people that attempt to accurately document Flink's concepts and their significance. Consult \autoref{sec:acknowledgements} for acknowledgements.} is an open-source system for processing streaming and batch data. Flink is built on the philosophy that many classes of data processing applications, including real-time analytics, continuous data pipelines, historic data processing (batch), and iterative algorithms (machine learning, graph analysis) can be expressed and executed as pipelined fault-tolerant dataflows. In this paper, we present Flink's architecture and expand on how a (seemingly diverse) set of use cases can be unified under a single execution model.
 \end{abstract}
 
 %!TEX root = paper.tex
@@ -117,11 +113,11 @@ Originating from the Stratosphere project \cite{stratosphere}, Flink is a top-le
 \vspace{2mm}
 \noindent The contributions of this paper are as follows:\vspace{-2mm}
 \begin{itemize}
-	\item We make the case for a unified architecture of stream and batch data processing, including specific optimizations that are only relevant for static data sets.
+	\item we make the case for a unified architecture of stream and batch data processing, including specific optimizations that are only relevant for static data sets,
 	\vspace{-3mm}
-	\item We show how streaming, batch, iterative, and interactive analytics can be represented as fault-tolerant streaming dataflows (in \autoref{sec:execution}).
+	\item we show how streaming, batch, iterative, and interactive analytics can be represented as fault-tolerant streaming dataflows (in \autoref{sec:execution}),
 	\vspace{-3mm}
-	\item We discuss how we can build a full-fledged stream analytics system with a flexible windowing mechanism (in \autoref{sec:streaming}), as well as a full-fledged batch processor (in \autoref{sec:batch}) on top of these dataflows, by showing how streaming, batch, iterative, and interactive analytics can be represented as streaming dataflows.
+	\item we discuss how we can build a full-fledged stream analytics system with a flexible windowing mechanism (in \autoref{sec:streaming}), as well as a full-fledged batch processor (in \autoref{sec:batch}) on top of these dataflows, by showing how streaming, batch, iterative, and interactive analytics can be represented as streaming dataflows.
 \end{itemize}
 
 
@@ -219,9 +215,9 @@ Flink's intermediate data streams are the core abstraction for data-exchange bet
 
 \para{Control Events.} Apart from exchanging data, streams in Flink communicate different types of control events. These are special events injected in the data stream by operators, and are delivered in-order along with all other data records and events within a stream partition. The receiving operators react to these events by performing certain actions upon their arrival. Flink uses lots of special types of control events, including: \vspace{-2mm}
 \begin{itemize}
-\item \textit{Checkpoint barriers} that coordinate checkpoints by dividing the stream into pre-checkpoint and post-checkpoint (discussed in \autoref{sec:fault-tolerance}). \vspace{-3mm}
-\item \textit{Watermarks} signaling the progress of event-time within a stream partition (discussed in \autoref{sec:streaming-time}). \vspace{-3mm}
-\item \textit{Iteration barriers} signaling that a stream partition has reached the end of a superstep, in Bulk/Stale-Synchronous-Parallel iterative algorithms on top of cyclic dataflows (discussed in \autoref{sec:batch-iterations}). \vspace{-1mm}
+\item \textit{checkpoint barriers} that coordinate checkpoints by dividing the stream into pre-checkpoint and post-checkpoint (discussed in \autoref{sec:fault-tolerance}), \vspace{-3mm}
+\item \textit{watermarks} signaling the progress of event-time within a stream partition (discussed in \autoref{sec:streaming-time}), \vspace{-3mm}
+\item \textit{iteration barriers} signaling that a stream partition has reached the end of a superstep, in Bulk/Stale-Synchronous-Parallel iterative algorithms on top of cyclic dataflows (discussed in \autoref{sec:batch-iterations}). \vspace{-1mm}
 \end{itemize}
 
 As mentioned above, control events assume that a stream partition preserves the order of records. To this end, unary operators in Flink that consume a single stream partition, \emph{guarantee a FIFO order of records}. However, operators receiving more than one stream partition merge the streams in arrival order, in order to keep up with the streams' rates and avoid back pressure. As a result, streaming dataflows in Flink do not provide ordering guarantees after any form of repartitioning or broadcasting and the responsibility of dealing with out-of-order records is left to the operator implementation. We found that this arrangement gives the most efficient design, as most operators do not require deterministic order (e.g., hash-joins, maps), and operators that need to compensate for out-of-order arrivals, such as event-time windows can do that more efficiently as part of the operator logic.
@@ -342,7 +338,7 @@ Note that if the stream above is partitioned on a key before  windowing, the win
 \label{sec:stream-iterations}
 \vspace{-2mm}
 Loops in streams are essential for several applications, such as incrementally building and training machine learning models, reinforcement learning and graph approximations \cite{feigenbaum2005graph,chandramouli2009fly}.
-In most such cases, feedback loops need no coordination. Asynchronous iterations cover the communication needs for streaming applications and differ from parallel optimisation problems that are based on structured iterations on finite data. As presented in \autoref{sec:iterations} and \autoref{fig:iterations}, the execution model of Apache Flink already covers asynchronous iterations, when no iteration control mechanism is enabled. In addition, to comply with fault-tolerance guarantees, feedback streams are treated as operator state within the implicit-iteration head operator and are part of a global snapshot \cite{carbone2015lightweight}. The DataStream API allows for an explicit definition of feedback streams and can trivially subsume support for structured loops over streams\cite{murray2013naiad} as well as progress tracking\cite{chandramouli2009fly}.
+In most such cases, feedback loops need no coordination. Asynchronous iterations cover the communication needs for streaming applications and differ from parallel optimisation problems that are based on structured iterations on finite data. As presented in \autoref{sec:iterations} and \autoref{fig:iterations}, the execution model of Apache Flink already covers asynchronous iterations, when no iteration control mechanism is enabled. In addition, to comply with fault-tolerance guarantees, feedback streams are treated as operator state within the implicit-iteration head operator and are part of a global snapshot \cite{carbone2015lightweight}. The DataStream API allows for an explicit definition of feedback streams and can trivially subsume support for structured loops over streams \cite{murray2013naiad} as well as progress tracking \cite{chandramouli2009fly}.
 
 
 %!TEX root = paper.tex
@@ -555,7 +551,7 @@ N.~Marz and J.~Warren.
 \bibitem{migliavacca2010seep}
 M.~Migliavacca, D.~Eyers, J.~Bacon, Y.~Papagiannis, B.~Shand, and P.~Pietzuch.
 \newblock Seep: scalable and elastic event processing.
-\newblock {\em Middleware'10 Posters and Demos Track}, page~4. ACM, 2010.
+\newblock {\em ACM Middleware'10 Posters and Demos Track}, 2010.
 
 \bibitem{murray2013naiad}
 D.~G. Murray, F.~McSherry, R.~Isaacs, M.~Isard, P.~Barham, and M.~Abadi.

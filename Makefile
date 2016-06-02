@@ -1,12 +1,12 @@
 pdf:
 	mkdir -p build
-	@TEXINPUTS=.//: latex -synctex=1 -interaction=nonstopmode -output-directory build --shell-escape paper
+	@TEXINPUTS=.//: pdflatex -synctex=1 -interaction=nonstopmode -output-directory build --shell-escape paper
 all:
 	mkdir -p build
-	@TEXINPUTS=.//: latex -synctex=1 -interaction=nonstopmode -output-directory build --shell-escape paper
+	@TEXINPUTS=.//: pdflatex -synctex=1 -interaction=nonstopmode -output-directory build --shell-escape paper
 	bibtex build/paper
-	latex -synctex=1 -interaction=nonstopmode -output-directory build paper
-	latex -synctex=1 -interaction=nonstopmode -output-directory build paper
+	pdflatex -synctex=1 -interaction=nonstopmode -output-directory build paper
+	pdflatex -synctex=1 -interaction=nonstopmode -output-directory build paper
 fig:
 	rm figures/cache/*
 	pdflatex -interaction=nonstopmode -output-directory build --shell-escape paper
