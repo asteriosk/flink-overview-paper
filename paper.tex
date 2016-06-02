@@ -14,6 +14,9 @@
 % code listings
 \usepackage{listings}
 
+\graphicspath{{figs/}}
+
+
 
 \newcommand{\TODO}[1]{\textcolor{red}{TODO: #1}}
 \newcommand{\sectionautorefname}{Section}%
@@ -48,16 +51,17 @@
 }%
 
 
-\usepackage[
-backend=biber
-% style=alphabetic,
-% sorting=abbrv
-]{biblatex}
+% \usepackage[
+% % backend=biber
+% % style=alphabetic,
+% % sorting=abbrv
+% ]{biblatex}
 
-\renewbibmacro{in:}{}
+% \renewbibmacro{in:}{}
+
  
-\addbibresource{references.bib}
-\renewcommand{\bibfont}{\small} % or any other  appropriate font command
+% \addbibresource{references.bib}
+% \renewcommand{\bibfont}{\small} % or any other  appropriate font command
 
 % url references
 \usepackage[hidelinks]{hyperref}
@@ -100,6 +104,7 @@ Apache Flink \footnote{The authors of this paper make no claim in being the sole
 
 \section{Introduction}
 \label{sec:intro}
+\vspace{-3mm}
 Data-stream processing (e.g., as exemplified by complex event processing systems) and static (batch) data processing (e.g., as exemplified by MPP databases and Hadoop) were traditionally considered as two very different types of applications. They were programmed using different programming models and APIs, and were executed by different systems (e.g., dedicated streaming systems such as  Apache Storm, IBM Infosphere Streams, Microsoft StreamInsight, or Streambase versus relational databases or execution engines for Hadoop, including Apache Spark and Apache Drill). Traditionally, batch data analysis made up for the lion's share of the use cases, data sizes, and market, while streaming data analysis mostly served specialized applications.
 
 It is becoming more and more apparent, however, that a huge number of today's large-scale data processing use cases handle data that is, in reality, produced continuously over time. These continuous streams of data come for example from web logs, application logs, sensors, or as changes to application state in databases (transaction log records). Rather than treating the streams as streams, today's setups ignore the continuous and timely nature of data production. Instead, data records are (often artificially) batched into static data sets (e.g., hourly, daily, or monthly chunks) and then processed in a time-agnostic fashion. Data collection tools, workflow managers, and schedulers orchestrate the creation and processing of batches, in what is actually a continuous data processing pipeline. Architectural patterns such as the "lambda architecture" \cite{marz2015big} combine batch and stream processing systems to implement multiple paths of computation: a streaming fast path for timely approximate results, and a batch offline path for late accurate results. All these approaches suffer from high latency (imposed by batches), high complexity (connecting and orchestrating several systems, and implementing business logic twice), as well as arbitrary inaccuracy, as the time dimension is not explicitly handled by the application code.
@@ -123,13 +128,10 @@ Originating from the Stratosphere project \cite{stratosphere}, Flink is a top-le
 
 
 
-
-%!TEX root = paper.tex
-
-% \vspace{-mm}
+% \vspace{-3mm}
 \section{System Architecture}
 \label{sec:architecture}
-
+\vspace{-2mm}
 In this section we lay out the architecture of Flink as a software stack and as a distributed system. While Flink's stack of APIs continues to grow, we can distinguish four main layers: deployment, core, APIs, and libraries.
 
 \para{Flink's Runtime and APIs.}  \autoref{fig:stack} shows Flink's software stack. The core of Flink is the distributed dataflow engine, which executes dataflow programs. A Flink runtime program is a DAG of stateful operators connected with data streams. There are two core APIs in Flink: the DataSet API for processing finite data sets (often referred to as \emph{batch processing}), and the DataStream API for processing potentially unbounded data streams (often referred to as \emph{stream processing}). Flink's core runtime engine can be seen as a streaming dataflow engine, and both the DataSet and DataStream APIs create runtime programs executable by the engine. As such, it serves as the common fabric to abstract both bounded (batch) and unbounded (stream) processing. On top of the core APIs, Flink bundles domain-specific libraries and APIs that generate DataSet and DataStream API programs, currently, FlinkML for machine learning, Gelly  for graph processing and Table for SQL-like operations. 
@@ -146,7 +148,7 @@ The JobManager coordinates the distributed execution of the dataflow. It tracks 
       \begin{minipage}{0.48\linewidth}
           \begin{figure}[H]
               \centering
-			\includegraphics[width=.88\textwidth]{figs/stack}
+			\includegraphics[width=.88\textwidth,natheight=590,natwidth=500]{figs/stack.pdf}
 			\vspace{-3mm}
 			\caption{The Flink software stack.}
 			\vspace{-3mm}
@@ -156,7 +158,7 @@ The JobManager coordinates the distributed execution of the dataflow. It tracks 
       % \hspace{0.05\linewidth}
       \begin{minipage}{0.5\linewidth}
           \begin{figure}[H]
-				\includegraphics[width=.95\textwidth]{figs/architecture.pdf}
+				\includegraphics[width=.95\textwidth,natheight=317,natwidth=204]{figs/architecture.pdf}
     			\vspace{-2.5mm}
     			\caption{The Flink process model.}
     			\label{fig:process-model}
@@ -166,14 +168,16 @@ The JobManager coordinates the distributed execution of the dataflow. It tracks 
 \end{figure}
 
 
-\vspace{-3mm}
+% \vspace{-3mm}
 \section{The Common Fabric: Streaming Dataflows}
 \label{sec:execution}
+\vspace{-3mm}
 
 Although users can write Flink programs using a multitude of APIs, all Flink programs eventually compile down to a common representation: the dataflow graph. The dataflow graph is executed by Flink's runtime engine, the common layer underneath both the batch processing (DataSet) and stream processing (DataStream) APIs.
 
 \vspace{-2mm}
 \subsection{Dataflow Graphs}
+\vspace{-2mm}
 The dataflow graph as depicted in \autoref{fig:dataflow} is a directed acyclic graph (DAG) that consists of: (i) stateful operators  and (ii) data streams that represent data produced by an operator and are available for consumption by operators. Since dataflow graphs are executed in a data-parallel fashion, operators are parallelized into one or more parallel instances called \emph{subtasks} and streams are split into one or more \emph{stream partitions} (one partition per producing subtask). 
 The stateful operators, which may be stateless as a special case implement all of the processing logic  (e.g., filters, hash joins and stream window functions). Many of these operators are implementations of textbook versions of well known algorithms. In \autoref{sec:streaming}, we provide details on the implementation of windowing operators. Streams distribute data between producing and consuming operators in various patterns, such as point-to-point, broadcast, re-partition, fan-out, and merge.
 
@@ -184,7 +188,7 @@ The stateful operators, which may be stateless as a special case implement all o
       \begin{minipage}{0.55\linewidth}
         \begin{figure}[H]
         \centering
-        \includegraphics[width=.999\textwidth]{figs/dataflow}
+        \includegraphics[width=.999\textwidth,natheight=960,natwidth=540]{figs/dataflow.pdf}
         \vspace{-5mm}
         \caption{A simple dataflow graph.}
         \label{fig:dataflow}
@@ -194,7 +198,7 @@ The stateful operators, which may be stateless as a special case implement all o
       % \vspace{-3mm}
       \begin{minipage}{0.32\linewidth}
           \begin{figure}[H]
-				\includegraphics[width=.99\textwidth]{figs/latency-throughput.pdf}
+				\includegraphics[width=.99\textwidth,natheight=590,natwidth=500]{figs/latency-throughput.pdf}
 				\vspace{-7mm}
     			\caption{The effect of buffer-timeout in latency and throughput.}
     			\label{fig:latency-throughput}
@@ -225,7 +229,7 @@ As mentioned above, control events assume that a stream partition preserves the 
 \vspace{-3mm}
 \subsection{Fault Tolerance}
 \label{sec:fault-tolerance}
-
+\vspace{-2mm}
 Flink offers reliable execution with strict exactly-once-processing consistency guarantees and deals with failures via checkpointing and partial re-execution. The general assumption the system makes to effectively provide these guarantees is that the data sources are persistent and replayable. Examples of such sources are files and durable message queues (e.g., Apache Kafka). In practice, non-persistent sources can also be incorporated by keeping a write-ahead log within the state of the source operators.
 
 The checkpointing mechanism of Apache Flink builds on the notion of distributed consistent snapshots to achieve exactly-once-processing guarantees. The possibly unbounded nature of a data stream makes re-computation upon recovery impractical, as possibly months of computation will need to be replayed for a long-running job. To bound recovery time, Flink takes a snapshot of the state of operators, including the current position of the input streams at regular intervals.
@@ -234,7 +238,7 @@ The core challenge lies in taking a consistent snapshot of all parallel operator
 
 \begin{figure}[t!]
 	\centering
-  	\includegraphics[width=.75\textwidth]{figs/snaps.pdf}
+  	\includegraphics[width=.75\textwidth,natheight=419,natwidth=159]{figs/snaps.pdf}
   	\vspace{-6mm}
 	\caption{Asynchronous Barrier Snapshotting.}
 	\vspace{-2mm}
@@ -253,25 +257,24 @@ Recovery from failures reverts all operator states to their respective states ta
 \item it is completely decoupled from the mechanism used for reliable storage, allowing state to be backed up to file systems, databases, etc., depending on the larger environment in which Flink is used.
 \end{inparaenum}
 
+\vspace{-3mm}
 \subsection{Iterative Dataflows}
 \label{sec:iterations}
-
-
-
-
-
+\vspace{-2mm}
 Incremental processing and iterations are crucial for applications, such as graph processing and machine learning. Support for iterations in data-parallel processing platforms typically relies on submitting a new job for each iteration or by adding additional nodes to a running DAG \cite{DBLP:journals/pvldb/BuHBE10, DBLP:conf/hotcloud/ZahariaCFSS10} or feedback edges \cite{murray2013naiad}. Iterations in Flink are implemented as  \emph{iteration steps}, special operators that themselves can contain an execution graph (\autoref{fig:iterations}). To maintain the DAG-based runtime and scheduler, Flink allows for iteration ``head'' and ``tail'' tasks that are \emph{implicitly} connected with feedback edges. The role of these tasks is to establish an active feedback channel to the iteration step and provide coordination for processing data records in transit within this feedback channel. Coordination is needed for implementing any type of structured parallel iteration model, such as the Bulk Synchronous Parallel (BSP) model and is implemented using control event. We explain how iterations are implemented in the DataStream and DataSet APIs in \autoref{sec:stream-iterations} and  \autoref{sec:batch-iterations}, respectively. 
 
 
-\vspace{-4mm}
+% \vspace{-4mm}
 \section{Stream Analytics on Top of Dataflows}
 \label{sec:streaming}
+\vspace{-3mm}
 
 Flink's DataStream API implements a full stream-analytics framework on top of Flink's runtime, including the mechanisms to manage time such as out-of-order event processing, defining windows, and maintaining and updating user-defined state. The streaming API is based on the notion of a DataStream, a (possibly unbounded) immutable collection of elements of a given type. Since Flink's runtime already supports pipelined data transfers, continuous stateful operators, and a fault-tolerance mechanism for consistent state updates, overlaying a stream processor on top of it essentially boils down to implementing a windowing system and a state interface. As noted, these are invisible to the runtime, which sees windows as just an implementation of stateful operators. 
 
 \vspace{-3mm}
 \subsection{The Notion of Time}
 \label{sec:streaming-time}
+\vspace{-2mm}
 Flink distinguishes between two notions of time: i) event-time, which denotes the time when an event originates (e.g., the timestamp associated with a  signal arising from a sensor, such as a mobile device) and ii) processing-time, which is the wall-clock time of the machine that is processing the data.
 
 In distributed systems there is an arbitrary skew between event-time and processing-time \cite{akidau2015dataflow}. This skew may mean arbitrary delays for getting an answer based on event-time semantics. To avoid arbitrary delays, these systems regularly insert special events called \emph{low watermarks} that mark a global progress measure. In the case of time progress for example, a watermark includes a time attribute $t$ indicating that all events lower than $t$ have already entered an operator. The watermarks aid the execution engine in processing events in the correct event order and serialize operations, such as window computations via a unified measure of progress.
@@ -283,7 +286,7 @@ Flink programs that are based on processing-time rely on local machine clocks, a
 
 \begin{figure}[t!]
   \centering
-    \includegraphics[width=.75\textwidth]{figs/iterations.pdf}
+    \includegraphics[width=.75\textwidth,natwidth=498,natheight=145]{figs/iterations.pdf}
     \vspace{-6mm}
   \caption{The iteration model of Apache Flink.}
   \vspace{-2mm}
@@ -292,6 +295,7 @@ Flink programs that are based on processing-time rely on local machine clocks, a
 
 \vspace{-3mm}
 \subsection{Stateful Stream Processing}
+\vspace{-2mm}
 While most operators in Flink's DataStream API look like functional, side-effect-free operators, they provide support for efficient stateful computations. State is critical to many applications, such as machine-learning model building, graph analysis, user session handling, and window aggregations. There is a plethora of different types of states depending on the use case. For example, the state can be something as simple as a counter or a sum or more complex, such as a classification tree or a large sparse matrix often used in machine-learning applications. Stream windows are  stateful operators that assign records to continuously updated buckets kept in memory as part of the operator state. 
 
 In Flink state is made explicit and is incorporated in the API by providing: i)~operator interfaces or annotations to statically register explicit local variables within the scope of an operator and  ii)~an operator-state abstraction for declaring partitioned key-value states and their associated operations. Users can also configure how the state is stored and checkpointed using the StateBackend abstractions provided by the system, thereby allowing highly flexible custom state management in streaming applications. Flink's checkpointing mechanism (discussed in \autoref{sec:fault-tolerance}) guarantees that any registered state is durable with exactly-once update semantics. 
@@ -311,6 +315,7 @@ In Flink state is made explicit and is incorporated in the API by providing: i)~
 % \end{lstlisting}
 
 \subsection{Stream Windows}
+\vspace{-2mm}
 Incremental computations over unbounded streams are often evaluated over continuously evolving logical views, called windows. Apache Flink incorporates windowing within a stateful operator that is configured via a flexible declaration composed out of three core functions: a window \textit{assigner} and optionally a \textit{trigger} and an \textit{evictor}. All three functions can be selected among a pool of common predefined implementations (e.g., sliding time windows) or can be explicitly defined by the user (i.e., user-defined functions).
 
 More specifically, the assigner is responsible for assigning each record to logical windows. For example, this decision can be based on the timestamp of a record when it comes to event-time windows. Note that in the case of sliding windows, an element can belong to multiple logical windows. An optional trigger defines when the operation associated with the window definition is performed. Finally, an optional evictor determines which records to retain within each window. Flink's window assignment process is uniquely capable of covering all known window types such as periodic time- and count-windows, punctuation, landmark, session and delta windows. Note that Flink's windowing capabilities incorporate out-of-order processing seamlessly, similarly to Google Cloud Dataflow \cite{akidau2015dataflow} and, in principle, subsume these windowing models. For example, below is a window definition with a range of 6 seconds that slides every 2 seconds (the assigner). The window results are computed once the watermark passes the end of the window (the trigger).
@@ -332,18 +337,20 @@ stream
 
 Note that if the stream above is partitioned on a key before  windowing, the window operation above is \textit{local} and thus does not require coordination between workers. This mechanism can be used to implement a wide variety of windowing functionality \cite{akidau2015dataflow}. 
 
+\vspace{-3mm}
 \subsection{Asynchronous Stream Iterations}
 \label{sec:stream-iterations}
+\vspace{-2mm}
 Loops in streams are essential for several applications, such as incrementally building and training machine learning models, reinforcement learning and graph approximations \cite{feigenbaum2005graph,chandramouli2009fly}.
 In most such cases, feedback loops need no coordination. Asynchronous iterations cover the communication needs for streaming applications and differ from parallel optimisation problems that are based on structured iterations on finite data. As presented in \autoref{sec:iterations} and \autoref{fig:iterations}, the execution model of Apache Flink already covers asynchronous iterations, when no iteration control mechanism is enabled. In addition, to comply with fault-tolerance guarantees, feedback streams are treated as operator state within the implicit-iteration head operator and are part of a global snapshot \cite{carbone2015lightweight}. The DataStream API allows for an explicit definition of feedback streams and can trivially subsume support for structured loops over streams\cite{murray2013naiad} as well as progress tracking\cite{chandramouli2009fly}.
 
 
 %!TEX root = paper.tex
 
-\vspace{-3mm}
+% \vspace{-4mm}
 \section{Batch Analytics on Top of Dataflows}
 \label{sec:batch}
-
+\vspace{-3mm}
 A bounded data set is a special case of an unbounded data stream. Thus, a streaming program that inserts all of its input data in a window can form a “batch” program and “batch processing” should be fully covered by Flink's features that were presented above. However, i) the syntax (i.e., the API for batch computation) can be simplified (e.g., there is no need for artificial global window definitions) and ii) programs that process bounded data sets are amenable to additional optimizations, more efficient book-keeping for fault-tolerance, and staged scheduling.
 
 \vspace{2mm}
@@ -358,17 +365,24 @@ A bounded data set is a special case of an unbounded data stream. Thus, a stream
 
 \noindent Below we describe these aspects in greater detail.
 
+\vspace{-3mm}
 \subsection{Query Optimization} 
+\vspace{-2mm}
 Flink's optimizer builds on techniques from parallel database systems such as plan equivalence, cost modeling and interesting-property propagation. However, the arbitrary UDF-heavy DAGs that make up Flink's dataflow programs do not allow a traditional optimizer to employ database techniques out of the box \cite{blackBoxes}, since the operators hide their semantics from the optimizer. For the same reason, cardinality and cost-estimation methods are equally difficult to employ. Flink's runtime supports various execution strategies including repartition and broadcast data transfer, as well as sort-based grouping and sort- and hash-based join implementations. Flink's optimizer enumerates different physical plans based on the concept of interesting properties propagation \cite{scopeOptimizer}, using a cost-based approach to choose among multiple physical plans. The cost includes network and disk I/O as well as CPU cost. To overcome the cardinality estimation issues in the presence of UDFs, Flink's optimizer can use hints that are provided by the programmer.
 
-\subsection{Memory Management} Building on database technology, Flink serializes data into memory segments, instead of allocating objects in the JVM’s heap to represent buffered in-flight data records. Operations such as sorting and joining operate as much as possible on the binary data directly, keeping the serialization and deserialization overhead at a minimum and partially spilling data to disk when needed. To handle arbitrary objects, Flink uses type inference and  custom serialization mechanisms.  By keeping the data processing on binary representation and off-heap, Flink manages to reduce the garbage collection overhead, and use cache-efficient and robust algorithms that scale gracefully under memory pressure.
+\vspace{-3mm}
+\subsection{Memory Management} 
+\vspace{-2mm}
+Building on database technology, Flink serializes data into memory segments, instead of allocating objects in the JVM’s heap to represent buffered in-flight data records. Operations such as sorting and joining operate as much as possible on the binary data directly, keeping the serialization and deserialization overhead at a minimum and partially spilling data to disk when needed. To handle arbitrary objects, Flink uses type inference and  custom serialization mechanisms.  By keeping the data processing on binary representation and off-heap, Flink manages to reduce the garbage collection overhead, and use cache-efficient and robust algorithms that scale gracefully under memory pressure.
 
+\vspace{-3mm}
 \subsection{Batch Iterations}
 \label{sec:batch-iterations}
+\vspace{-2mm}
 Iterative graph analytics, parallel gradient descent and optimisation techniques have been implemented in the past on top of Bulk Synchronous Parallel (BSP) and Stale Synchronous Parallel (SSP) models, among others. Flink's execution model allows for any type of structured iteration logic to be implemented on top, by using iteration-control events. For instance, in the case of a BSP execution, iteration-control events mark the beginning and the end of supersteps in an iterative computation. Finally, Flink introduces further novel optimisation techniques such as the concept of \emph{delta} iterations \cite{DBLP:journals/pvldb/EwenTKM12}, which can exploit sparse computational dependencies Delta iterations are already exploited by Gelly, Flink's Graph API.  
 
 %!TEX root = paper.tex
-\vspace{-4mm}
+% \vspace{-4mm}
 \section{Related work}
 \vspace{-2mm}
 \label{sec:related}
@@ -401,17 +415,180 @@ More recent approaches in data streaming enable horizontal scalability and compo
 \label{sec:acknowledgements}
 The development of the Apache Flink project is overseen by a self-selected team of active contributors to the project. A Project Management Committee (PMC) guides the project's ongoing operations, including community development and product releases. At the current time of writing this, the list of Flink committers are : M\'arton Balassi, Paris Carbone, Ufuk Celebi, Stephan Ewen, Gyula F\'ora, Alan Gates, Greg Hogan, Fabian Hueske, Vasia Kalavri, Aljoscha Krettek, ChengXiang Li, Andra Lungu, Robert Metzger, Maximilian Michels, Chiwan Park, Till Rohrmann, Henry Saputra, Matthias J. Sax, Sebastian Schelter, Kostas Tzoumas, Timo Walther and Daniel Warneke. In addition to these individuals, we want to acknowledge the broader Flink community of more than 180 contributors.
 
-\vspace{-4mm}
+\vspace{-5mm}
 \section{Conclusion}
 \vspace{-2mm}
 \label{sec:conclusions}
 In this paper, we presented Apache Flink, a platform that implements a universal dataflow engine designed to perform both stream and batch analytics. Flink's dataflow engine treats operator state and logical intermediate results as first-class citizens and is used by both the batch and a data stream APIs with different parameters. The streaming API that is built on top of  Flink's streaming dataflow engine provides the means to keep recoverable state and to partition, transform, and aggregate data stream windows. While batch computations are, in theory, a special case of a streaming computations, Flink treats them specially, by optimizing their execution using a query optimizer and by implementing blocking operators that gracefully spill to disk in the absence of memory. 
+
+% \begin{thebibliography}{10}
+% \itemsep=1pt
+% \begin{small}
+
+\vspace{-3mm}
+\begin{thebibliography}{10}
+\itemsep=1pt
+\begin{small}
+
+
+\bibitem{abadi2005design}
+D.~J. Abadi, Y.~Ahmad, M.~Balazinska, U.~Cetintemel, M.~Cherniack, J.-H. Hwang,
+  W.~Lindner, A.~Maskey, A.~Rasin, E.~Ryvkina, et~al.
+\newblock The design of the Borealis stream processing engine.
+\newblock {\em CIDR}, 2005.
+
+\bibitem{akidau2013millwheel}
+T.~Akidau, A.~Balikov, K.~Bekiro{\u{g}}lu, S.~Chernyak, J.~Haberman, R.~Lax,
+  S.~McVeety, D.~Mills, P.~Nordstrom, and S.~Whittle.
+\newblock Millwheel: fault-tolerant stream processing at Internet scale.
+\newblock {\em PVLDB}, 2013.
+
+\bibitem{akidau2015dataflow}
+T.~Akidau, R.~Bradshaw, C.~Chambers, S.~Chernyak, R.~J.
+  Fern{\'a}ndez-Moctezuma, R.~Lax, S.~McVeety, D.~Mills, F.~Perry, E.~Schmidt,
+  et~al.
+\newblock The dataflow model: a practical approach to balancing correctness,
+  latency, and cost in massive-scale, unbounded, out-of-order data processing.
+\newblock {\em PVLDB}, 2015.
+
+\bibitem{stratosphere}
+A.~Alexandrov, R.~Bergmann, S.~Ewen, J.-C. Freytag, F.~Hueske, A.~Heise,
+  O.~Kao, M.~Leich, U.~Leser, V.~Markl, F.~Naumann, M.~Peters, A.~Rheinlaender,
+  M.~J. Sax, S.~Schelter, M.~Hoeger, K.~Tzoumas, and D.~Warneke.
+\newblock The stratosphere platform for big data analytics.
+\newblock {\em VLDB Journal}, 2014.
+
+\bibitem{arasu2004stream}
+A.~Arasu, B.~Babcock, S.~Babu, J.~Cieslewicz, M.~Datar, K.~Ito, R.~Motwani,
+  U.~Srivastava, and J.~Widom.
+\newblock Stream: The stanford data stream management system.
+\newblock {\em Technical Report}, 2004.
+
+\bibitem{DBLP:journals/pvldb/BuHBE10}
+Y.~Bu, B.~Howe, M.~Balazinska, and M.~D. Ernst.
+\newblock {HaLoop: Efficient Iterative Data Processing on Large Clusters}.
+\newblock {\em PVLDB}, 2010.
+
+\bibitem{carbone2015lightweight}
+P.~Carbone, G.~F{\'o}ra, S.~Ewen, S.~Haridi, and K.~Tzoumas.
+\newblock Lightweight asynchronous snapshots for distributed dataflows.
+\newblock {\em arXiv:1506.08603}, 2015.
+
+\bibitem{chandramouli2014trill}
+B.~Chandramouli, J.~Goldstein, M.~Barnett, R.~DeLine, D.~Fisher, J.~C. Platt,
+  J.~F. Terwilliger, and J.~Wernsing.
+\newblock Trill: a high-performance incremental query processor for diverse
+  analytics.
+\newblock {\em PVLDB}, 2014.
+
+\bibitem{chandramouli2009fly}
+B.~Chandramouli, J.~Goldstein, and D.~Maier.
+\newblock On-the-fly progress detection in iterative stream queries.
+\newblock {\em PVLDB}, 2009.
+
+\bibitem{chandrasekaran2003psoup}
+S.~Chandrasekaran and M.~J. Franklin.
+\newblock Psoup: a system for streaming queries over streaming data.
+\newblock {\em VLDB Journal}, 2003.
+
+\bibitem{chandy1985distributed}
+K.~M. Chandy and L.~Lamport.
+\newblock Distributed snapshots: determining global states of distributed
+  systems.
+\newblock {\em ACM TOCS}, 1985.
+
+\bibitem{DBLP:journals/cacm/DeanG08}
+J.~Dean~et al.
+\newblock {MapReduce: simplified data processing on large clusters}.
+\newblock {\em Communications of the {ACM}}, 2008.
+
+\bibitem{dewitt1990gamma}
+D.~J. DeWitt, S.~Ghandeharizadeh, D.~Schneider, A.~Bricker, H.-I. Hsiao,
+  R.~Rasmussen, et~al.
+\newblock The gamma database machine project.
+\newblock {\em IEEE TKDE}, 1990.
+
+\bibitem{DBLP:journals/pvldb/EwenTKM12}
+S.~Ewen, K.~Tzoumas, M.~Kaufmann, and V.~Markl.
+\newblock {Spinning Fast Iterative Data Flows}.
+\newblock {\em {PVLDB}}, 2012.
+
+\bibitem{feigenbaum2005graph}
+J.~Feigenbaum, S.~Kannan, A.~McGregor, S.~Suri, and J.~Zhang.
+\newblock On graph problems in a semi-streaming model.
+\newblock {\em Theoretical Computer Science}, 2005.
+
+\bibitem{gedik2008spade}
+B.~Gedik, H.~Andrade, K.-L. Wu, P.~S. Yu, and M.~Doo.
+\newblock Spade: the system s declarative stream processing engine.
+\newblock {\em ACM SIGMOD}, 2008.
+
+\bibitem{blackBoxes}
+F.~Hueske, M.~Peters, M.~J. Sax, A.~Rheinl{\"a}nder, R.~Bergmann, A.~Krettek,
+  and K.~Tzoumas.
+\newblock {Opening the Black Boxes in Data Flow Optimization}.
+\newblock {\em PVLDB}, 2012.
+
+\bibitem{isard2007dryad}
+M.~Isard, M.~Budiu, Y.~Yu, A.~Birrell, and D.~Fetterly.
+\newblock Dryad: distributed data-parallel programs from sequential building
+  blocks.
+\newblock {\em ACM SIGOPS}, 2007.
+
+\bibitem{kornacker2015impala}
+M.~Kornacker, A.~Behm, V.~Bittorf, T.~Bobrovytsky, C.~Ching, A.~Choi,
+  J.~Erickson, M.~Grund, D.~Hecht, M.~Jacobs, et~al.
+\newblock Impala: A modern, open-source sql engine for hadoop.
+\newblock {\em CIDR}, 2015.
+
+\bibitem{li2008out}
+J.~Li, K.~Tufte, V.~Shkapenyuk, V.~Papadimos, T.~Johnson, and D.~Maier.
+\newblock Out-of-order processing: a new architecture for high-performance
+  stream systems.
+\newblock {\em PVLDB}, 2008.
+
+\bibitem{marz2015big}
+N.~Marz and J.~Warren.
+\newblock {\em Big Data: Principles and best practices of scalable realtime data systems}.
+\newblock Manning Publications Co., 2015.
+
+\bibitem{migliavacca2010seep}
+M.~Migliavacca, D.~Eyers, J.~Bacon, Y.~Papagiannis, B.~Shand, and P.~Pietzuch.
+\newblock Seep: scalable and elastic event processing.
+\newblock {\em Middleware'10 Posters and Demos Track}, page~4. ACM, 2010.
+
+\bibitem{murray2013naiad}
+D.~G. Murray, F.~McSherry, R.~Isaacs, M.~Isard, P.~Barham, and M.~Abadi.
+\newblock Naiad: a timely dataflow system.
+\newblock {\em ACM SOSP}, 2013.
+
+\bibitem{saha2015apache}
+B.~Saha, H.~Shah, S.~Seth, G.~Vijayaraghavan, A.~Murthy, and C.~Curino.
+\newblock Apache tez: A unifying framework for modeling and building data
+  processing applications.
+\newblock {\em ACM SIGMOD}, 2015.
+
+\bibitem{DBLP:conf/hotcloud/ZahariaCFSS10}
+M.~Zaharia, M.~Chowdhury, M.~J. Franklin, S.~Shenker, and I.~Stoica.
+\newblock {Spark: Cluster Computing with Working Sets}.
+\newblock {\em {USENIX HotCloud}}, 2010.
+
+\bibitem{scopeOptimizer}
+J.~Zhou, P.-A. Larson, and R.~Chaiken.
+\newblock Incorporating partitioning and parallel plans into the scope
+  optimizer.
+\newblock {\em IEEE ICDE}, 2010.
+
+\end{small}
+\end{thebibliography}
+
+
 
 % {
 % \small
 % \bibliographystyle{abbrv}
 % \bibliography{references}
 % }
-\printbibliography
+% \printbibliography
 
 \end{document}
